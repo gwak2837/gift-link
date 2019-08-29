@@ -27,9 +27,19 @@
 *.lib
 
 # Executables
-*.exe
 *.out
 *.app
 
 # IDE(VS2017) files
 *.vs
+*.sln
+*.log
+*.tlog
+*.idb
+*.pdb
+*.vcxproj
+*.filters
+*.user
+*.ilk
+*.ipdb
+*.iobj
