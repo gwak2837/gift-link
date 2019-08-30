@@ -34,10 +34,12 @@ public:
 	std::int64_t getMyUTXOAmount(Type _type) const;
 
 	void printTransactionHistory() const;
-	void printMyUTXOTable() const;
 	void printUTXOTable() const;
+	void printMyUTXOTable() const;
 };
 
-
+/* createTransaction의 반환형이 Transaction인 이유:
+함수 내부에서 지역변수 Transaction(값이 복사된 임시변수 반환)을 생성해 반환하는 형태라서
+반환형이 Transaction &(객체 그 자체를 반환) 이면 소멸된 지역변수를 반환하기 때문에 옳지 않다. */
 
 #endif

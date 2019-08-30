@@ -13,7 +13,7 @@ using namespace std;
 Block::Block() : Block(NULL) {}
 
 Block::Block(const Block * _previousBlock) : previousBlock(_previousBlock) {
-	assert(0 < bits && bits < 256); // 2진수 기준 난이도 범위
+	assert(0 < bits && bits < SHA256_DIGEST_VALUELEN * 8); // 2진수 기준 난이도 범위
 
 	if (previousBlock != NULL)
 		memcpy(previousBlockHash, previousBlock->blockHash, sizeof(previousBlockHash));
@@ -49,7 +49,9 @@ MINING:
 	SHA256_Encrpyt(blockHeader, getBlockHeaderSize(), blockHash);
 
 	while (!miningSuccess()) {
-		if (nonce == UINT64_MAX)
+		//if(nonce % 0x200000 == 0)	// 채굴 진행 중 표시
+		//	cout << ".\n";
+		if (nonce == UINT64_MAX)	// nonce 오버플로우 시 timestamp 초기화
 			goto MINING;
 
 		nonce++;
@@ -150,21 +152,33 @@ void Block::initializeMerkleRoot() {
 	delete[] _merkleRoot;
 }
 
+void Block::print(ostream & o) const {
+	o << "Block #" << height << '\n';
+	o << "Block Hash:  " << blockHash << '\n';
+	o << "Version:     " << version << '\n';
+	o << "Previous \nBlock Hash:  " << previousBlockHash << '\n';
+	o << "Merkle Hash: " << merkleRoot << '\n';
+	o << "Timestamp:   " << timeToString(timestamp) << '\n';
+	o << "Bits:        " << (int)bits << '\n';
+	o << "Nonce:       " << nonce << "\n\n";
 
-/* 개발 중 */
-void Block::addTransactionsFrom(queue<Transaction *> & transactionPool) {
-	while (transactions.size() < MAX_TRANSACTION_COUNT) {
-		Transaction * ptx = transactionPool.front();
-
-		// Tx 복사
-
-
-
-
-
-		// transactions.push_back(transactionPool.front());
-		transactionPool.pop();
+	int j = 0;
+	for (const Transaction & tx : transactions) {
+		o << "Transaction #" << j << '\n';
+		tx.print(o);
+		j++;
 	}
+}
+
+void Block::printBlockHeader(ostream & o) const {
+	o << "Block #" << height << '\n';
+	o << "Block Hash:  " << blockHash << '\n';
+	o << "Version:     " << version << '\n';
+	o << "Previous \nBlock Hash:  " << previousBlockHash << '\n';
+	o << "Merkle Hash: " << merkleRoot << '\n';
+	o << "Timestamp:   " << timeToString(timestamp) << '\n';
+	o << "Bits:        " << (int)bits << '\n';
+	o << "Nonce:       " << nonce << "\n\n";
 }
 
 

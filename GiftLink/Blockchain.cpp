@@ -14,6 +14,8 @@ using namespace std;
 
 // Genesis block을 생성한다.
 Blockchain::Blockchain(string _name, const uint8_t * _recipientPublicKeyHash) : blockCount(0), name(_name), version(1) {
+	cout << "\nBeing producing the block...\n";
+
 	Block * _genesisBlock = new Block();
 	_genesisBlock->version = version;	// 현재 블록체인 version 입력
 
@@ -33,35 +35,25 @@ Blockchain::Blockchain(string _name, const uint8_t * _recipientPublicKeyHash) : 
 	genesisBlock = _genesisBlock;		// Genesis block 설정
 	addBlock(_genesisBlock);			// Last block 설정
 
+	cout << "The block was produced successfully!\n\n";
+
 	Block * _waitingBlock = new Block(lastBlock);
 	waitingBlock = _waitingBlock;
 }
 
-
-bool Blockchain::isValid() const {
-
-	// 모든 블록이 Block::isValid() 인지 (블록 머클루트 계산 및 채굴이 유효한지)
-	// Coinbase 거래의 수수료 합산이 유효한지
-	// 모든 거래(Coinbase + 일반)가 Blockchain::isValid(tx) 인지
-
-
-
-	return false;
-}
-
 // UTXO를 참조하고 금액이 정확한지(input amount >= output amount), 서명이 유효한지, 입력의 공개키 해시가 참조된 출력의 해시와 같은지
-bool Blockchain::isValid(const Transaction * tx) const {
-	if (tx->isCoinbase()) {
-		if (tx->outputs[0].value != COINBASE_REWARD)
+bool Blockchain::isValid(const Transaction & tx) const {
+	if (tx.isCoinbase()) {
+		if (tx.outputs[0].value != COINBASE_REWARD)
 			return false;
 
-		if (tx->outputs[0].type == Type::GLC)
+		if (tx.outputs[0].type == Type::GLC)
 			return false;
 	}
 	else {
 		map<Type, int64_t> mapTypeValue;
 
-		for (const Input & input : tx->inputs) {
+		for (const Input & input : tx.inputs) {
 			Output & output = findPreviousOutput(input.blockHeight, input.previousTxHash, input.outputIndex);
 
 			uint8_t senderPublicKeyHash[SHA256_DIGEST_VALUELEN];		// Input의 SHA256(pubKey)가 이전 Output의 pubKeyHash와 같은지
@@ -70,13 +62,13 @@ bool Blockchain::isValid(const Transaction * tx) const {
 				return false;
 
 			const struct uECC_Curve_t * curve = uECC_secp256r1();		// Input의 공개키와 서명이 유효한지
-			if (uECC_verify(input.senderPublicKey, tx->txHash, sizeof(tx->txHash), input.signature, curve) == 0)
+			if (uECC_verify(input.senderPublicKey, tx.txHash, sizeof(tx.txHash), input.signature, curve) == 0)
 				return false;
 
 			if (!isUTXO(output))	// UTXO를 참조하는지 -->> 고아 거래 풀에 담김.
 				return false;
 
-			map<Type, int64_t>::iterator iter = mapTypeValue.find(output.type);	// 이전 Output의 Type별 Value 합산 후 저장
+			auto iter = mapTypeValue.find(output.type);	// 이전 Output의 Type별 Value 합산 후 저장
 			if (iter != mapTypeValue.end())
 				iter->second += output.value;
 			else
@@ -84,7 +76,7 @@ bool Blockchain::isValid(const Transaction * tx) const {
 		}
 
 		// inputTypeValue와 outputTypeValue의 비교
-		for (const Output & output : tx->outputs) {
+		for (const Output & output : tx.outputs) {
 			auto iter = mapTypeValue.find(output.type);
 			if (iter != mapTypeValue.end()) {
 				iter->second -= output.value;
@@ -100,76 +92,97 @@ bool Blockchain::isValid(const Transaction * tx) const {
 }
 
 
-
-
-/* 개발 중 : 유효한 Tx인지 확인(Tx 총 Input >= 총 Output 확인 등)
+/* 유효한 Tx인지 확인(Tx 총 Input >= 총 Output 확인 등)
 transaction pool에 transaction을 추가한다. */
-void Blockchain::addTransactionToPool(Transaction * _tx) {
+void Blockchain::addTransactionToPool(Transaction & _tx) {
 	if (isValid(_tx))
-		transactionPool.push(_tx);
+		txPool.push(_tx);
 	else
-		cout << "Unvalid Transaction";
+		cout << "Unvalid Transaction...\n";
 }
 
 /* transaction pool에서 transaction을 가져와 채굴한다.
+성공적으로 블록을 생성하면 true, 아니면 false를 반환한다.
 
 Coinbase Transaction 생성 과정
 1. Input 설정
 2. Output 설정
 3. Transaction 데이터 해싱 */
-void Blockchain::produceBlock(const uint8_t * _recipientPublicKeyHash) {
-	if (transactionPool.size() >= MAX_TRANSACTION_COUNT) {
-		waitingBlock->addTransactionsFrom(transactionPool);
-		waitingBlock->version = version;		// 현재 blockchain version 입력
-
-		vector<Input> inputs;
-		Input input;
-		inputs.push_back(input);
-
-		vector<Output> outputs;
-		Output output(_recipientPublicKeyHash, COINBASE_REWARD, Type::GLC);	// Coinbase 채굴 보상 Output
-		outputs.push_back(output);
-
-		int64_t reward = 0;
-		for (Transaction & tx : waitingBlock->transactions) {
-			// 블록에 있는 거래가 참조하는 UTXO를 확인해서 그 거래의 총 Input 계산
-			for (Input & input : tx.inputs) {
-				assert(lastBlock != NULL);
-
-				Output & utxo = findPreviousOutput(input.blockHeight, input.previousTxHash, input.outputIndex);
-				(int)utxo.type;
-				utxo.value;
-
-				
-
-
-
-			}
-
-			// 만약 Type이 다르면 따로 Output 생성
-			
-
-			reward += 10000 - tx.getTotalCoinOutputs(); // Tx의 총 Input과 총 Output의 차이 계산
-		}
-		Output output2(_recipientPublicKeyHash, reward, Type::GLC);
-		outputs.push_back(output2);
-
-		Transaction coinbaseTx(inputs, outputs, version, "Coinbase Transaction");
-
-		waitingBlock->transactions.insert(waitingBlock->transactions.begin(), coinbaseTx);
-		waitingBlock->initializeMerkleRoot();	// Transaction hash로 Merkletree를 만들어 waiting block의 merkleroot 계산
-		waitingBlock->mining();					// waiting block을 채굴
-		addBlock(waitingBlock);					// waiting block을 블록체인에 추가
-		waitingBlock->height = blockCount - 1;
-		waitingBlock->isMainChain = true;
-		cout << "Block was produced successfully!\n";
-
-		Block * newWaitingBlock = new Block(lastBlock);
-		waitingBlock = newWaitingBlock;
-	}
-	else {
+bool Blockchain::produceBlock(const uint8_t * _recipientPublicKeyHash) {
+	if (txPool.size() < MAX_TRANSACTION_COUNT) {
 		cout << "There aren't enough transactions in the memory pool to produce block...\n";
+		return false;
 	}
+
+	for (int i = 0; i < MAX_TRANSACTION_COUNT; i++) {		// Transaction Pool에서 tx을 가져와서 block에 넣는다.
+		assert(isValid(txPool.front()));					// 혹시나 tx가 unvalid하면 delete(메모리 해제)하고 큐에서 뺴기로
+		assert(waitingBlock != NULL);
+		waitingBlock->transactions.push_back(txPool.front());
+		txPool.pop();
+	}
+
+	waitingBlock->version = version;		// 현재 blockchain version 입력
+
+	vector<Input> inputs;
+	Input input;
+	inputs.push_back(input);
+
+	vector<Output> outputs;
+	Output output(_recipientPublicKeyHash, COINBASE_REWARD, Type::GLC);	// Coinbase 채굴 보상 Output
+	outputs.push_back(output);
+
+	map<Type, int64_t> mapTypeValue;
+
+	for (const Transaction & tx : waitingBlock->transactions) {
+		for (const Input & input : tx.inputs) {
+			Output & output = findPreviousOutput(input.blockHeight, input.previousTxHash, input.outputIndex);
+			auto iter = mapTypeValue.find(output.type);	// 이전 Output의 Type별 Value 합산 후 저장
+			if (iter != mapTypeValue.end())
+				iter->second += output.value;
+			else
+				mapTypeValue.insert(pair<Type, int64_t>(output.type, output.value));
+		}
+	}
+
+	// Type-Value별로 Output 생성
+	for (const auto & kv : mapTypeValue) {
+		Output output2(_recipientPublicKeyHash, kv.second, kv.first);
+		outputs.push_back(output2);
+	}
+
+	Transaction coinbaseTx(inputs, outputs, version, "Coinbase Transaction");
+
+	waitingBlock->transactions.insert(waitingBlock->transactions.begin(), coinbaseTx);
+	waitingBlock->initializeMerkleRoot();	// Transaction hash로 Merkletree를 만들어 waiting block의 merkleroot 계산
+	waitingBlock->mining();					// waiting block을 채굴
+	addBlock(waitingBlock);					// waiting block을 블록체인에 추가
+	waitingBlock->height = blockCount - 1;
+	waitingBlock->isMainChain = true;
+	cout << "Block was produced successfully!\n";
+
+	Block * newWaitingBlock = new Block(lastBlock);
+	waitingBlock = newWaitingBlock;
+
+	return true;
+}
+
+bool Blockchain::isValid() const {
+
+	// 모든 블록이 Block::isValid() 인지 (블록 머클루트 계산 및 채굴이 유효한지)
+	// Coinbase 거래의 수수료 합산이 유효한지
+	// 모든 거래(Coinbase + 일반)가 Blockchain::isValid(tx) 인지
+
+
+
+	return false;
+}
+
+Output & Blockchain::findPreviousOutput(uint64_t blockHeight, const uint8_t * previousTxHash, int outputIndex) const {
+	// TODO: 여기에 반환 구문을 삽입합니다.
+}
+
+bool Blockchain::isUTXO(Output & output) const {
+	return false;
 }
 
 string Blockchain::getFileName() const {
@@ -216,26 +229,8 @@ void Blockchain::print(ostream & o) const {
 	const Block * presentBlock = lastBlock;
 	o << "Blockchain Name: " << name << '\n';
 	for (uint64_t i = 0; i < blockCount; i++) {
-
-		// block.print(o) 로 변경
-
 		o << "---------------------------------------------------------------------------\n";
-		o << "Block #" << presentBlock->height << '\n';
-		o << "Block Hash:  " << presentBlock->blockHash << '\n';
-		o << "Version:     " << presentBlock->version << '\n';
-		o << "Previous \nBlock Hash:  " << presentBlock->previousBlockHash << '\n';
-		o << "Merkle Hash: " << presentBlock->merkleRoot << '\n';
-		o << "Timestamp:   " << timeToString(presentBlock->timestamp) << '\n';
-		o << "Bits:        " << (int)presentBlock->bits << '\n';
-		o << "Nonce:       " << presentBlock->nonce << "\n\n";
-
-		int j = 0;
-		for (const Transaction & tx : presentBlock->transactions) {
-			o << "Transaction #" << j << '\n';
-			tx.print(o);
-			j++;
-		}
-		
+		presentBlock->print(o);
 		presentBlock = presentBlock->previousBlock;
 	}
 	cout << "\nPrinting was completed!\n";

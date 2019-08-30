@@ -22,7 +22,7 @@ class Block {
 	std::uint8_t previousBlockHash[SHA256_DIGEST_VALUELEN];	// 이전 블록 해시
 	std::uint8_t merkleRoot[SHA256_DIGEST_VALUELEN];		// 개별 transaction 해시로 만든 머클트리의 머클루트
 	time_t timestamp;										// 해당 블록의 채굴 시작 시간
-	std::uint8_t bits = 23;									// 2진수 기준 blockHash 앞에 나와야 할 0의 개수
+	std::uint8_t bits = 22;									// 2진수 기준 blockHash 앞에 나와야 할 0의 개수
 	std::uint64_t nonce;									// 임의 대입 수
 
 	std::uint64_t height;									// Block의 높이. 해싱 안 함.
@@ -44,8 +44,8 @@ class Block {
 	inline bool isFull() const;
 	void mining();							// <- test 필요
 	void initializeMerkleRoot();
-	void addTransactionsFrom(std::queue<Transaction *> & transactionPool);
-	void print(std::ostream & o);
+	void print(std::ostream & o) const;
+	void printBlockHeader(std::ostream & o) const;
 
 	// getter method
 	inline int getBlockHeaderSize() const;

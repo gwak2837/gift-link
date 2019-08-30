@@ -17,7 +17,7 @@ class Blockchain {
 	const Block * genesisBlock;					// 첫번째 블록
 	const Block * lastBlock;					// 마지막 블록
 	Block * waitingBlock;						// 채굴을 기다리는 블록
-	std::queue<Transaction *> transactionPool;	// 검증을 기다리는 거래(아직 검증되지 않은 블록)
+	std::queue<Transaction> txPool;				// 검증을 기다리는 거래(아직 검증되지 않은 블록)
 	std::uint64_t blockCount;					// 블록의 총 개수
 	std::string name;							// 블록체인 이름
 
@@ -28,8 +28,8 @@ public:
 
 	Blockchain(std::string _name, const std::uint8_t * _recipientPublicKeyHash);
 
-	void addTransactionToPool(Transaction * _tx);
-	void produceBlock(const std::uint8_t * _recipientPublicKeyHash);
+	void addTransactionToPool(Transaction & _tx);
+	bool produceBlock(const std::uint8_t * _recipientPublicKeyHash);
 
 	Output & findPreviousOutput(std::uint64_t blockHeight, const std::uint8_t * previousTxHash, int outputIndex) const;
 	bool isUTXO(Output & output) const;
@@ -39,8 +39,8 @@ public:
 
 	void loadBlockchain();								// -> 개발 중	// isValid와 비슷
 
+	bool isValid(const Transaction & tx) const;
 	bool isValid() const;
-	bool isValid(const Transaction * tx) const;
 
 	// getter method
 	std::string getFileName() const;
@@ -68,6 +68,8 @@ inline void Blockchain::addBlock(Block * _block) {
 	blockCount++;
 }
 
+/* findPreviousOutput()의 반환형이 참조자인 이유:
+원래 있던 Output의 위치를 반환하니까 */
 
 #endif // !BLOCKCHAIN_H
 

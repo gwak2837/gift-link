@@ -385,7 +385,7 @@ bool is_number(const string& s);
 //
 //	///* 판매자가 블록체인 노드에 거래와 개인키 전송 */
 //	//if (tx->isValidCoinbase()) {
-//	//	bc.addTransaction(tx);
+//	//	bc.push(tx);
 //
 //	//	/* 판매자에게 메시지 전송 */
 //	//	cout << "상품권 발행 성공!\n";		
@@ -402,7 +402,7 @@ bool is_number(const string& s);
 //
 //	///* 블록체인 노드에 거래 전송 */
 //	//if (tx2->isValid(w2.getPrivateKey()), bc.isUTXO(tx2)) {
-//	//	bc.addTransaction(tx2);
+//	//	bc.push(tx2);
 //
 //	//	/* w2에게 메시지 전송 */
 //	//	cout << "판매 성공!\n";
