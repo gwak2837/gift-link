@@ -96,52 +96,51 @@ uint8_t * Block::createBlockHeader() const {
 	return blockHeader;
 }
 
-/* 개발 중 
-블록의 시간 간격이 적절한지
-previousBlockHash가 유효한지
-머클루트 계산을 정확히 했는지
-채굴을 정확하게 했는지 */
+/* 보완점? */
 bool Block::isValid() const {
-	if (previousBlock != NULL) {
-		if(previousBlock->timestamp - VALID_TIMESTAMP_GAP > timestamp) {
-			cout << "\n\n" << height << "th block timestamp is unvalid...\n";
+	if (previousBlock != NULL) {		
+		if(previousBlock->timestamp - VALID_TIMESTAMP_GAP > timestamp) {	// 블록의 timestamp 간격이 적절한지
+			cout << "\n" << height << "th block timestamp is unvalid...\n";
 			return false;
 		}
-		if (previousBlock->height + 1 != height) {
-			cout << "\n\n" << height << "th block index is unvalid...\n";
-			return false;
+		if (!isMemoryEqual(previousBlock->blockHash, previousBlockHash, sizeof(previousBlockHash))) {	// previousBlockHash가 유효한지
+			cout << "\n" << height << "th block previousBlockHash is unvalid...\n";
+				return false;
 		}
 	}
-		
+	
+	const uint8_t * _merkleRoot = createMerkleRoot();
 
-	const uint8_t * merkleRoot = createMerkleRoot();
-
-	if (isMemoryEqual(merkleRoot, merkleRoot, SHA256_DIGEST_VALUELEN)) {
-		cout << "\n\nUnvalid transaction... Some of Transaction Data are changed...\n";
-		delete[] merkleRoot;
+	if (_merkleRoot == NULL) {		// 블록에 거래가 포함되어 있는지
+		cout << "\nThere is no transaction in " << height << "th block...\n";
+		delete[] _merkleRoot;
 		return false;
 	}
-	else {
-		delete[] merkleRoot;
-		return true;
-	}
 
-	uint8_t * hash = new uint8_t[SHA256_DIGEST_VALUELEN];
+	if (!isMemoryEqual(merkleRoot, _merkleRoot, sizeof(merkleRoot))) {		// Transaction 해싱 결과 merkleRoot와 일치하는지
+		cout << "\n" << height << "th block merkleRoot is unvalid...\n";	// 원인: 머클트리 잘못 계산, Transaction 내용 변경
+		delete[] _merkleRoot;
+		return false;
+	}
+	delete[] merkleRoot;
+
+	uint8_t _blockHash[SHA256_DIGEST_VALUELEN];
 	const uint8_t * blockHeader = createBlockHeader();
-	SHA256_Encrpyt(blockHeader, getBlockHeaderSize(), hash);
+	SHA256_Encrpyt(blockHeader, getBlockHeaderSize(), _blockHash);
+	delete[] blockHeader;
 
-	if (isMemoryEqual(hash, blockHash, SHA256_DIGEST_VALUELEN)) {
-		cout << "\n\nUnvalid block... Block Header are changed...\n";
-		delete[] hash;
-		delete[] blockHeader;
+	if (!isMemoryEqual(_blockHash, blockHash, SHA256_DIGEST_VALUELEN)) {	// Block Header 해싱 결과 blockHashd와 일치하는지
+		cout << "\n" << height << "th block blockHash is unvalid...\n";
 		return false;
-	} else {
-		delete[] hash;
-		delete[] blockHeader;
-		return true;
 	}
-}
 
+	if (!miningSuccess()) {			// blockHash가 목표값에 도달했는지
+		cout << "\n" << height << "th block mining is unvalid...\n";
+		return false;
+	}
+
+	return true;
+}
 
 void Block::initializeMerkleRoot() {
 	assert(transactions.size() > 0);
@@ -183,13 +182,13 @@ void Block::printBlockHeader(ostream & o) const {
 
 
 /* 반환된 포인터는 나중에 delete[]로 할당 해제해야 함.
-채굴할 블록 안에 Tx가 하나도 없는 경우 NULL을 반환함. */
+블록 안에 Tx가 하나도 없는 경우 NULL을 반환함. */
 const uint8_t * Block::createMerkleRoot() const {
-	vector<uint8_t *> txHashes;
-	txHashes.reserve(MAX_TRANSACTION_COUNT);
-	
 	if (transactions.size() == 0)		// 블록 안에 Tx가 하나도 없는 경우
 		return NULL;
+
+	vector<uint8_t *> txHashes;
+	txHashes.reserve(MAX_TRANSACTION_COUNT);
 
 	for (const Transaction & tx : transactions) {
 		uint8_t * txHash = new uint8_t[SHA256_DIGEST_VALUELEN];

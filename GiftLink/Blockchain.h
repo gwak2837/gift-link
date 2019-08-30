@@ -37,7 +37,8 @@ public:
 	std::vector<Output *> getMyUTXOTable(const std::uint8_t * _recipientPublicKeyHash) const;	// -> test 필요함
 	//std::vector<Output *> getIssuableGiftcardTable(const std::uint8_t * privateKey) const;
 
-	void loadBlockchain();								// -> 개발 중	// isValid와 비슷
+	bool loadBlockchain();								// -> 개발 중	// isValid와 비슷
+	bool setHeightAndMainChain();
 
 	bool isValid(const Transaction & tx) const;
 	bool isValid() const;
