@@ -17,10 +17,10 @@ class Wallet {
 
 	const struct uECC_Curve_t * curve = uECC_secp256r1();
 
-public:
-	std::vector<Output *> UTXOTable;
-	std::vector<Output *> myUTXOTable;
+	std::vector<UTXO> UTXOTable;
+	std::vector<UTXO> myUTXOTable;
 
+public:
 	Wallet();
 	Wallet(std::uint8_t * _privateKey);
 
@@ -32,10 +32,14 @@ public:
 	inline const std::uint8_t * getPublicKey() const { return publicKey; }
 	inline const std::uint8_t * getPublicKeyHash() const { return publicKeyHash; }
 	std::int64_t getMyUTXOAmount(Type _type) const;
+	inline std::vector<UTXO> getUTXOTable() const { return UTXOTable; }
+	inline std::vector<UTXO> getMyUTXOTable() const { return myUTXOTable; }
 
-	void printTransactionHistory() const;
-	void printUTXOTable() const;
-	void printMyUTXOTable() const;
+	void setUTXOTable(std::vector<UTXO> & UTXOTable) const;		// 내부적으로 UTXOTable과 myUTXOTable을 구분해서 저장
+
+	void printUTXOTable(std::ostream & o) const;
+	void printMyUTXOTable(std::ostream & o) const;
+	void printTransactionHistory(std::ostream & o) const;
 };
 
 /* createTransaction의 반환형이 Transaction인 이유:

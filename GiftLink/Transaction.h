@@ -20,7 +20,10 @@ public:
 	std::int64_t value;
 	Type type;
 
+	Output() {}
 	Output(const std::uint8_t * _recipientPublicKeyHash, std::int64_t _value, Type _type);
+
+	void print(std::ostream & o) const;
 };
 
 class Input {
@@ -53,10 +56,7 @@ public:
 	Transaction(std::vector<Input> & _inputs, std::vector<Output> & _outputs, int _version, std::string _memo = "");
 
 	uint8_t * createTxData() const;				// 서명에 참조할 Output의 PubKeyHash를 넣은 상태에서 해싱할 원본 데이터를 추출하는 과정
-	std::uint64_t getTotalCoinOutputs() const;
-
 	inline size_t getTxDataSize() const;		// 해싱할 원본 데이터의 크기(byte)
-	inline const std::uint8_t * getTxHash() const;
 
 	bool isCoinbase() const;
 	void print(std::ostream & o) const;
@@ -68,9 +68,15 @@ inline size_t Transaction::getTxDataSize() const {
 		+ sizeof(version) + sizeof(timestamp) + 4 + memo.length(); // 4는 SigHashCode 크기
 }
 
-inline const std::uint8_t * Transaction::getTxHash() const {
-	return txHash;
-}
+class UTXO {
+public:
+	std::uint8_t txHash[SHA256_DIGEST_VALUELEN];
+	Output output;
+	
+	UTXO(const std::uint8_t * txHash, Output output);
+
+	void print(std::ostream & o) const;
+};
 
 
 #endif

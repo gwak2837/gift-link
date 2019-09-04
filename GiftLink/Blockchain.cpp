@@ -14,7 +14,7 @@ using namespace std;
 
 // Genesis block을 생성한다.
 Blockchain::Blockchain(string _name, const uint8_t * _recipientPublicKeyHash) : blockCount(0), name(_name), version(1) {
-	cout << "\nBeing producing the block...\n";
+	cout << "\nCreating a blockchain...\n";
 
 	Block * _genesisBlock = new Block();
 	_genesisBlock->version = version;	// 현재 블록체인 version 입력
@@ -35,7 +35,7 @@ Blockchain::Blockchain(string _name, const uint8_t * _recipientPublicKeyHash) : 
 	genesisBlock = _genesisBlock;		// Genesis block 설정
 	addBlock(_genesisBlock);			// Last block 설정
 
-	cout << "The block was produced successfully!\n\n";
+	cout << "The blockchain was created successfully!\n\n";
 
 	Block * _waitingBlock = new Block(lastBlock);
 	waitingBlock = _waitingBlock;
@@ -50,42 +50,40 @@ bool Blockchain::isValid(const Transaction & tx) const {
 		if (tx.outputs[0].type == Type::GLC)
 			return false;
 	}
-	else {
-		map<Type, int64_t> mapTypeValue;
+	map<Type, int64_t> mapTypeValue;
 
-		for (const Input & input : tx.inputs) {
-			Output & output = findPreviousOutput(input.blockHeight, input.previousTxHash, input.outputIndex);
+	for (const Input & input : tx.inputs) {
+		const Transaction & previousTx = findPreviousTx(input.blockHeight, input.previousTxHash);
+		const Output & previosOutput = previousTx.outputs[input.outputIndex];
 
-			uint8_t senderPublicKeyHash[SHA256_DIGEST_VALUELEN];		// Input의 SHA256(pubKey)가 이전 Output의 pubKeyHash와 같은지
-			SHA256_Encrpyt(input.senderPublicKey, sizeof(input.senderPublicKey), senderPublicKeyHash);
-			if (!isMemoryEqual(output.recipientPublicKeyHash, senderPublicKeyHash, sizeof(senderPublicKeyHash)))
-				return false;
+		uint8_t senderPublicKeyHash[SHA256_DIGEST_VALUELEN];		// Input의 SHA256(pubKey)가 이전 Output의 pubKeyHash와 같은지
+		SHA256_Encrpyt(input.senderPublicKey, sizeof(input.senderPublicKey), senderPublicKeyHash);
+		if (!isMemoryEqual(previosOutput.recipientPublicKeyHash, senderPublicKeyHash, sizeof(senderPublicKeyHash)))
+			return false;
 
-			const struct uECC_Curve_t * curve = uECC_secp256r1();		// Input의 공개키와 서명이 유효한지
-			if (uECC_verify(input.senderPublicKey, tx.txHash, sizeof(tx.txHash), input.signature, curve) == 0)
-				return false;
+		const struct uECC_Curve_t * curve = uECC_secp256r1();		// Input의 공개키와 서명이 유효한지
+		if (uECC_verify(input.senderPublicKey, tx.txHash, sizeof(tx.txHash), input.signature, curve) == 0)
+			return false;
 
-			if (!isUTXO(output))	// UTXO를 참조하는지 -->> 고아 거래 풀에 담김.
-				return false;
+		if (!isUTXO(previousTx, input.outputIndex))			// UTXO를 참조하는지 -->> 아니면 일단 고아 거래 풀에 담김.
+			return false;
 
-			auto iter = mapTypeValue.find(output.type);	// 이전 Output의 Type별 Value 합산 후 저장
-			if (iter != mapTypeValue.end())
-				iter->second += output.value;
-			else
-				mapTypeValue.insert(pair<Type, int64_t>(output.type, output.value));
-		}
+		auto iter = mapTypeValue.find(previosOutput.type);	// 이전 Output의 Type별 Value 합산 후 저장
+		if (iter != mapTypeValue.end())
+			iter->second += previosOutput.value;
+		else
+			mapTypeValue.insert(pair<Type, int64_t>(previosOutput.type, previosOutput.value));
+	}
 
-		// inputTypeValue와 outputTypeValue의 비교
-		for (const Output & output : tx.outputs) {
-			auto iter = mapTypeValue.find(output.type);
-			if (iter != mapTypeValue.end()) {
-				iter->second -= output.value;
-				if (iter->second < 0)		// Input의 Value보다 Output의 Value가 더 크면
-					return false;
-			}
-			else	// Output의 Type이 Input에 없으면
+	for (const Output & output : tx.outputs) {		// inputTypeValue와 outputTypeValue의 비교
+		auto iter = mapTypeValue.find(output.type);
+		if (iter != mapTypeValue.end()) {
+			iter->second -= output.value;
+			if (iter->second < 0)		// Input의 Value보다 Output의 Value가 더 크면
 				return false;
 		}
+		else	// Output의 Type이 Input에 없으면
+			return false;
 	}
 
 	return true;
@@ -98,7 +96,7 @@ void Blockchain::addTransactionToPool(Transaction & _tx) {
 	if (isValid(_tx))
 		txPool.push(_tx);
 	else
-		cout << "Unvalid Transaction...\n";
+		cout << "Invalid Transaction...\n";
 }
 
 /* transaction pool에서 transaction을 가져와 채굴한다.
@@ -115,7 +113,7 @@ bool Blockchain::produceBlock(const uint8_t * _recipientPublicKeyHash) {
 	}
 
 	for (int i = 0; i < MAX_TRANSACTION_COUNT; i++) {		// Transaction Pool에서 tx을 가져와서 block에 넣는다.
-		assert(isValid(txPool.front()));					// 혹시나 tx가 unvalid하면 delete(메모리 해제)하고 큐에서 뺴기로
+		assert(isValid(txPool.front()));					// 혹시나 tx가 Invalid하면 delete(메모리 해제)하고 큐에서 뺴기로
 		assert(waitingBlock != NULL);
 		waitingBlock->transactions.push_back(txPool.front());
 		txPool.pop();
@@ -135,12 +133,14 @@ bool Blockchain::produceBlock(const uint8_t * _recipientPublicKeyHash) {
 
 	for (const Transaction & tx : waitingBlock->transactions) {
 		for (const Input & input : tx.inputs) {
-			Output & output = findPreviousOutput(input.blockHeight, input.previousTxHash, input.outputIndex);
-			auto iter = mapTypeValue.find(output.type);	// 이전 Output의 Type별 Value 합산 후 저장
+			const Transaction & previousTx = findPreviousTx(input.blockHeight, input.previousTxHash);
+			const Output & previosOutput = previousTx.outputs[input.outputIndex];
+
+			auto iter = mapTypeValue.find(previosOutput.type);	// 이전 Output의 Type별 Value 합산 후 저장
 			if (iter != mapTypeValue.end())
-				iter->second += output.value;
+				iter->second += previosOutput.value;
 			else
-				mapTypeValue.insert(pair<Type, int64_t>(output.type, output.value));
+				mapTypeValue.insert(pair<Type, int64_t>(previosOutput.type, previosOutput.value));
 		}
 	}
 
@@ -166,23 +166,108 @@ bool Blockchain::produceBlock(const uint8_t * _recipientPublicKeyHash) {
 	return true;
 }
 
+/* 개발 중 : Coinbase 거래의 수수료 합산이 유효한지 */
 bool Blockchain::isValid() const {
+	if (lastBlock == NULL) {
+		cout << "\nThere is no block in the blockchain...\n\n";
+		return false;
+	}
 
-	// 모든 블록이 Block::isValid() 인지 (블록 머클루트 계산 및 채굴이 유효한지)
-	// Coinbase 거래의 수수료 합산이 유효한지
-	// 모든 거래(Coinbase + 일반)가 Blockchain::isValid(tx) 인지
+	const Block * presentBlock = lastBlock;
+	for (size_t i = 0; i < blockCount; i++, presentBlock = presentBlock->previousBlock) {
+		for (const Transaction & tx : presentBlock->transactions) {			// 모든 거래(Coinbase + 일반)가 유효한지
+			if (!isValid(tx)) {			
+				cout << "\nThere is invalid transaction in " << blockCount - i - 1 << "th block...\n";
+				cout << "----- Transaction Info -----";
+				tx.print(cout);
+				return false;
+			}
+		}
+		
+		// Coinbase 거래의 수수료 합산이 유효한지
 
+		if (presentBlock->isValid()) {			// 모든 블록이 Block::isValid() 인지 (블록 머클루트 계산 및 채굴이 유효한지)
+			cout << "\nThere is invalid " << blockCount - i - 1 << "th block in the blockchain...\n";
+			cout << "----- Block Info -----";
+			presentBlock->print(cout);
+			return false;
+		}
+	}
 
-
-	return false;
+	return true;
 }
 
-Output & Blockchain::findPreviousOutput(uint64_t blockHeight, const uint8_t * previousTxHash, int outputIndex) const {
-	// TODO: 여기에 반환 구문을 삽입합니다.
+/* 개발 중 : 모든 경로에서 값을 반환하지 않습니다. */
+/* 블록 높이와 거래 해시를 입력하면 이전 거래의 위치를 반환한다.
+찾지 못하면 NULL을 반환한다. */
+const Transaction & Blockchain::findPreviousTx(uint64_t blockHeight, const uint8_t * previousTxHash) const {
+	assert(blockHeight < blockCount);
+
+	const Block * presentBlock = lastBlock;
+	for (size_t i = 0; i < blockCount - blockHeight - 1; i++, presentBlock = presentBlock->previousBlock) {}
+
+	for (const Transaction & tx : presentBlock->transactions) {
+		if (isMemoryEqual(tx.txHash, previousTxHash, sizeof(tx.txHash))) {
+			return tx;
+		}
+	}
+
+	cout << "There is no previous transaction matched with hash...\n";
+	assert(false);
 }
 
-bool Blockchain::isUTXO(Output & output) const {
-	return false;
+bool Blockchain::isUTXO(const Transaction & _tx, int outputIndex) const {
+	if (lastBlock == NULL) {
+		cout << "\nThere is no block in the blockchain...\n";
+		return false;
+	}
+
+	const Block * presentBlock = lastBlock;
+	for (size_t i = 0; i < blockCount; i++, presentBlock = presentBlock->previousBlock) {
+		for (const Transaction & tx : presentBlock->transactions) {
+			for (const Input & input : tx.inputs) {
+				if (isMemoryEqual(input.previousTxHash, _tx.txHash, sizeof(tx.txHash)) && input.outputIndex == outputIndex)
+					return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+bool Blockchain::findUTXOTable(std::vector<UTXO>& UTXOTable) const {
+	if (lastBlock == NULL) {
+		cout << "\nThere is no block in the blockchain...\n";
+		return false;
+	}
+
+	const Block * presentBlock = lastBlock;
+	for (size_t i = 0; i < blockCount; i++, presentBlock = presentBlock->previousBlock) {
+		for (const Transaction & tx : presentBlock->transactions) {
+			for (int i = 0; i < tx.outputs.size(); i++) {
+				if (isUTXO(tx, i)) {
+					UTXOTable.push_back(UTXO(tx.txHash, tx.outputs[i]));
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
+bool Blockchain::findMyUTXOTable(vector<UTXO> & myUTXOTable, const std::uint8_t * _recipientPublicKeyHash) const {
+	vector<UTXO> UTXOTable;
+	if (!findUTXOTable(UTXOTable)) {
+		return false;
+	}
+
+	for (UTXO & utxo : UTXOTable) {
+		if (isMemoryEqual(utxo.output.recipientPublicKeyHash, _recipientPublicKeyHash, sizeof(utxo.output.recipientPublicKeyHash))) {
+			myUTXOTable.push_back(utxo);
+		}
+	}
+
+	return true;
 }
 
 string Blockchain::getFileName() const {
@@ -200,9 +285,8 @@ void Blockchain::printAllBlockHash() const {
 	}
 
 	const Block * presentBlock = lastBlock;
-	for (uint64_t i = 0; i < blockCount; i++) {
+	for (size_t i = 0; i < blockCount; i++, presentBlock = presentBlock->previousBlock) {
 		cout << "Block Hash: " << presentBlock->blockHash << '\n';
-		presentBlock = presentBlock->previousBlock;
 	}
 }
 
@@ -213,9 +297,8 @@ void Blockchain::printAllMerkleHash() const {
 	}
 
 	const Block * presentBlock = lastBlock;
-	for (uint64_t i = 0; i < blockCount; i++) {
+	for (size_t i = 0; i < blockCount; i++, presentBlock = presentBlock->previousBlock) {
 		cout << "Merkle Root: " << presentBlock->merkleRoot << '\n';
-		presentBlock = presentBlock->previousBlock;
 	}
 }
 
@@ -228,10 +311,9 @@ void Blockchain::print(ostream & o) const {
 
 	const Block * presentBlock = lastBlock;
 	o << "Blockchain Name: " << name << '\n';
-	for (uint64_t i = 0; i < blockCount; i++) {
+	for (size_t i = 0; i < blockCount; i++, presentBlock = presentBlock->previousBlock) {
 		o << "---------------------------------------------------------------------------\n";
 		presentBlock->print(o);
-		presentBlock = presentBlock->previousBlock;
 	}
 	cout << "\nPrinting was completed!\n";
 }
@@ -245,7 +327,7 @@ void Blockchain::printAllTransaction(ostream& o) const {
 	}
 
 	const Block * presentBlock = lastBlock;
-	for (uint64_t i = 0; i < blockCount; i++) {
+	for (size_t i = 0; i < blockCount; i++) {
 		if (presentBlock->transactionsAreValid() && presentBlock->isValid()) {		// merkleRoot와 blockHash 유효성 검사
 			size_t txSize = presentBlock->transactions.size();
 			for (size_t j = 0; j < txSize; j++) {
@@ -262,67 +344,10 @@ void Blockchain::printAllTransaction(ostream& o) const {
 }
 
 
-vector<UTXO *> Blockchain::getUTXOTable() const {
+vector<UTXO *> Blockchain::findUTXOTable() const {
 	return vector<UTXO *>();
 }
 
-// Private Key를 받아 해당 key의 사용되지 않은 거래를 찾아서 반환한다.
-vector<UTXO *> Blockchain::getMyUTXOTable(const BYTE * privateKey) const {
-	if (lastBlock == NULL) {
-		cout << "\nThere is no block in the blockchain...\n";
-		return vector<UTXO *>();
-	}
-	
-	vector<UTXO *> myTXOs;
-	const Block * presentBlock = lastBlock;
-	// 블록체인에서 자신의 Transaction Output을 찾는다.
-	for (uint64_t i = 0; i < blockCount; i++) {
-		int j = 0;
-		for (Transaction * tx : presentBlock->transactions) {
-			int k = 0;
-			for(Output * output : tx->getOutputs()) {
-				Input input;
-				input.generateSignature(privateKey);
-				if (input.verifySignature(output->getPublicSignature(), output->getPubSigLength())) {
-
-
-
-
-					UTXO * txo = new UTXO(tx->getTransactionHash(), i, j, k, output->getValue(), output->getType(), output->getTypeIndex());
-					myTXOs.push_back(txo);
-				}
-				k++;
-			}
-			j++;
-		}
-		presentBlock = presentBlock->previousBlock;
-	}
-
-	// 모든 Transaction에 대해 참조되지 않은 Transaction만 찾는다. O(n^2), n = myTransactions.size()
-	vector<UTXO *> myUTXOs;
-	for (const Transaction * myTx : myTransactions) {
-		for (const Transaction * myTx2 : myTransactions) {
-			for(const Input * input : myTx2->getInputs()) {
-				if (Block::isMemoryEqual(myTx->getTransactionHash(), input->getPreviousTxHash(), SHA256_DIGEST_VALUELEN))
-					goto REFERENCED;
-			}
-		}
-
-		// 참조되지 않은 Transaction의 output만 myUTXOTable에 넣는다.
-		for (const Output * output : myTx->getOutputs()) {
-			if (Block::isMemoryEqual(publicKey, output->getPublicSignature(), SHA256_DIGEST_VALUELEN)) {
-				UTXO * myUTXO = new UTXO(myTx->getTransactionHash(), 0, 0, 0, output->getValue(), output->getType(), output->getTypeIndex());
-				myUTXOTable.push_back(myUTXO);
-			}
-		}
-		
-		// 참조된 Transaction output은 Table에 넣지 않는다.
-		REFERENCED:
-		continue;
-	}
-	
-	return myUTXOTable;
-}
 
 vector<UTXO *> Blockchain::getIssuableGiftcardTable(const BYTE * privateKey) const {
 	if (lastBlock == NULL) {
@@ -354,33 +379,5 @@ vector<UTXO *> Blockchain::getIssuableGiftcardTable(const BYTE * privateKey) con
 
 	return issuableGiftcardList;
 }
-
-bool Blockchain::isUTXO(const Transaction * _tx) const {
-	if (lastBlock == NULL) {
-		cout << "\nThere is no block in the blockchain...\n";
-		return false;
-	}
-
-	const Block * presentBlock = lastBlock;
-	for (uint64_t i = 0; i < blockCount - 1; i++) {
-		for (const Transaction * tx : presentBlock->transactions) {
-			for (const Input * input : tx->getInputs()) {
-				if (Block::isMemoryEqual(_tx->getTransactionHash(), input->getPreviousTxHash(), SHA256_DIGEST_VALUELEN))
-					return false;
-			}
-		}
-		presentBlock = presentBlock->previousBlock;
-	}
-
-	for (const Transaction * tx : presentBlock->transactions) {
-		for (const Input * input : tx->getInputs()) {
-			if (Block::isMemoryEqual(_tx->getTransactionHash(), input->getPreviousTxHash(), SHA256_DIGEST_VALUELEN))
-				return false;
-		}
-	}
-	return true;
-}
-
-
 
 */

@@ -18,7 +18,7 @@ class Blockchain {
 	const Block * lastBlock;					// 마지막 블록
 	Block * waitingBlock;						// 채굴을 기다리는 블록
 	std::queue<Transaction> txPool;				// 검증을 기다리는 거래(아직 검증되지 않은 블록)
-	std::uint64_t blockCount;					// 블록의 총 개수
+	size_t blockCount;							// 블록의 총 개수
 	std::string name;							// 블록체인 이름
 
 	inline void addBlock(Block * _block);
@@ -31,10 +31,10 @@ public:
 	void addTransactionToPool(Transaction & _tx);
 	bool produceBlock(const std::uint8_t * _recipientPublicKeyHash);
 
-	Output & findPreviousOutput(std::uint64_t blockHeight, const std::uint8_t * previousTxHash, int outputIndex) const;
-	bool isUTXO(Output & output) const;
-	std::vector<Output *> getUTXOTable() const;
-	std::vector<Output *> getMyUTXOTable(const std::uint8_t * _recipientPublicKeyHash) const;	// -> test 필요함
+	const Transaction & findPreviousTx(std::uint64_t blockHeight, const std::uint8_t * previousTxHash) const;
+	bool isUTXO(const Transaction & tx, int outputIndex) const;
+	bool findUTXOTable(std::vector<UTXO> & UTXOTable) const;
+	bool findMyUTXOTable(std::vector<UTXO> & myUTXOTable, const std::uint8_t * _recipientPublicKeyHash) const;	// -> test 필요함
 	//std::vector<Output *> getIssuableGiftcardTable(const std::uint8_t * privateKey) const;
 
 	bool loadBlockchain();								// -> 개발 중	// isValid와 비슷
@@ -47,7 +47,7 @@ public:
 	std::string getFileName() const;
 	inline const Block * getGenesisBlock() const { return genesisBlock; }
 	inline const Block * getLastBlock() const { return lastBlock; }
-	inline std::uint64_t getBlockCount() const { return blockCount; }
+	inline size_t getBlockCount() const { return blockCount; }
 	inline std::string getName() const { return name; }
 
 	//for debug
@@ -69,8 +69,8 @@ inline void Blockchain::addBlock(Block * _block) {
 	blockCount++;
 }
 
-/* findPreviousOutput()의 반환형이 참조자인 이유:
-원래 있던 Output의 위치를 반환하니까 */
+/* findPreviousTx()의 반환형이 참조자인 이유:
+원래 있던 Tx의 위치를 반환하니까 */
 
 #endif // !BLOCKCHAIN_H
 

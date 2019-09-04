@@ -71,14 +71,10 @@ Transaction Wallet::createTransaction(int blockchainVersion, const uint8_t * _re
 }
 
 
-
-
-int64_t Wallet::getMyUTXOAmount(Type _type) const {
-	return 0;
-}
-
-void Wallet::printMyUTXOTable() const {
-}
-
-void Wallet::printUTXOTable() const {
+void Wallet::printMyUTXOTable(std::ostream & o) const {
+	o << "----- My UTXO Table -----\n";
+	for (UTXO utxo : myUTXOTable) {
+		utxo.print(o);
+		o << '\n';
+	}
 }

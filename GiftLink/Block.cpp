@@ -100,11 +100,11 @@ uint8_t * Block::createBlockHeader() const {
 bool Block::isValid() const {
 	if (previousBlock != NULL) {		
 		if(previousBlock->timestamp - VALID_TIMESTAMP_GAP > timestamp) {	// 블록의 timestamp 간격이 적절한지
-			cout << "\n" << height << "th block timestamp is unvalid...\n";
+			cout << "\n" << height << "th block timestamp is invalid...\n";
 			return false;
 		}
 		if (!isMemoryEqual(previousBlock->blockHash, previousBlockHash, sizeof(previousBlockHash))) {	// previousBlockHash가 유효한지
-			cout << "\n" << height << "th block previousBlockHash is unvalid...\n";
+			cout << "\n" << height << "th block previousBlockHash is invalid...\n";
 				return false;
 		}
 	}
@@ -118,24 +118,24 @@ bool Block::isValid() const {
 	}
 
 	if (!isMemoryEqual(merkleRoot, _merkleRoot, sizeof(merkleRoot))) {		// Transaction 해싱 결과 merkleRoot와 일치하는지
-		cout << "\n" << height << "th block merkleRoot is unvalid...\n";	// 원인: 머클트리 잘못 계산, Transaction 내용 변경
+		cout << "\n" << height << "th block merkleRoot is invalid...\n";	// 원인: 머클트리 잘못 계산, Transaction 내용 변경
 		delete[] _merkleRoot;
 		return false;
 	}
-	delete[] merkleRoot;
+	delete[] _merkleRoot;
 
 	uint8_t _blockHash[SHA256_DIGEST_VALUELEN];
 	const uint8_t * blockHeader = createBlockHeader();
 	SHA256_Encrpyt(blockHeader, getBlockHeaderSize(), _blockHash);
 	delete[] blockHeader;
 
-	if (!isMemoryEqual(_blockHash, blockHash, SHA256_DIGEST_VALUELEN)) {	// Block Header 해싱 결과 blockHashd와 일치하는지
-		cout << "\n" << height << "th block blockHash is unvalid...\n";
+	if (!isMemoryEqual(blockHash, _blockHash, sizeof(blockHash))) {	// Block Header 해싱 결과 blockHashd와 일치하는지
+		cout << "\n" << height << "th block blockHash is invalid...\n";
 		return false;
 	}
 
 	if (!miningSuccess()) {			// blockHash가 목표값에 도달했는지
-		cout << "\n" << height << "th block mining is unvalid...\n";
+		cout << "\n" << height << "th block mining is invalid...\n";
 		return false;
 	}
 

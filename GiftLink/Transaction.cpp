@@ -15,6 +15,11 @@ Output::Output(const std::uint8_t * _recipientPublicKeyHash, std::int64_t _value
 	memcpy(recipientPublicKeyHash, _recipientPublicKeyHash, sizeof(recipientPublicKeyHash));
 }
 
+void Output::print(std::ostream & o) const {
+	o << "Recipient Public Key Hash: " << recipientPublicKeyHash << '\n';
+	o << "Value: " << value << '\n';
+}
+
 
 
 Input::Input() {
@@ -91,16 +96,6 @@ uint8_t * Transaction::createTxData() const {
 	return txData;
 }
 
-uint64_t Transaction::getTotalCoinOutputs() const {
-	uint64_t sum = 0;
-	for (Output output : outputs) {
-		if(output.type == Type::GLC)
-			sum += output.value;
-	}
-
-	return sum;
-}
-
 bool Transaction::isCoinbase() const {
 	if (inputs.size() != 1)
 		return false;
@@ -161,3 +156,11 @@ ostream & operator<<(ostream & o, Type & type) {
 	}
 }
 
+UTXO::UTXO(const std::uint8_t * _txHash, Output _output) : output(_output) {
+	memcpy(txHash, _txHash, sizeof(txHash));
+}
+
+void UTXO::print(std::ostream & o) const {
+	o << "Unspent Transaction Hash: " << txHash << '\n';
+	output.print(o);
+}

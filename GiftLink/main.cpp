@@ -274,7 +274,7 @@ bool is_number(const string& s);
 //		//cout << "Which property(string): ";
 //		//cin >> propertyType;
 //
-//		//vector<UTXO> utxo = bc.getMyUTXOTable(recipient.getPrivateKey(), propertyType);
+//		//vector<UTXO> utxo = bc.findMyUTXOTable(recipient.getPrivateKey(), propertyType);
 //		//recipient.setMyUTXOTable(utxo);
 //
 //		//cout << "Your property: " << recipient.getMyUTXOAmount(propertyType) << '\n';
@@ -351,7 +351,7 @@ bool is_number(const string& s);
 //
 //
 //		
-//		//vector<UTXO> myUTXOTable = bc.getMyUTXOTable(w.getPrivateKey());
+//		//vector<UTXO> myUTXOTable = bc.findMyUTXOTable(w.getPrivateKey());
 //		//w.setMyUTXOTable(myUTXOTable);
 //		//w.printMyUTXOTable();
 //		
@@ -373,7 +373,7 @@ bool is_number(const string& s);
 //
 //	////---------------------- 발행된 상품권 조회 ----------------------
 //	///* 사용자가 블록체인 노드에게 UTXO Table 요청 */
-//	//vector<UTXO> utxoTable = bc.getUTXOTable();
+//	//vector<UTXO> utxoTable = bc.findUTXOTable();
 //	//recipient.setUTXOTable(utxoTable);
 //	//recipient.printUTXOTable();
 //	//
