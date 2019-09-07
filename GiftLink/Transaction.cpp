@@ -156,11 +156,16 @@ ostream & operator<<(ostream & o, Type & type) {
 	}
 }
 
-UTXO::UTXO(const std::uint8_t * _txHash, Output _output) : output(_output) {
+UTXO::UTXO(const std::uint8_t * _txHash, Output _output, int _outputIndex, std::uint64_t _blockHeight) : output(_output), 
+	outputIndex(_outputIndex), blockHeight(_blockHeight) {
 	memcpy(txHash, _txHash, sizeof(txHash));
 }
 
 void UTXO::print(std::ostream & o) const {
 	o << "Unspent Transaction Hash: " << txHash << '\n';
 	output.print(o);
+}
+
+bool operator<(const UTXO & utxo1, const UTXO & utxo2) {
+	return utxo1.output.value > utxo2.output.value;
 }

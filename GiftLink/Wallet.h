@@ -24,7 +24,7 @@ public:
 	Wallet();
 	Wallet(std::uint8_t * _privateKey);
 
-	Transaction createTransaction(int blockchainVersion, const std::uint8_t * _recipientPublicKeyHash, Type _type,
+	bool createTransaction(Transaction & tx, int blockchainVersion, const std::uint8_t * _recipientPublicKeyHash, Type _type,
 		std::int64_t value, std::int64_t fee, std::string memo = "");
 
 	// getter method
@@ -35,7 +35,7 @@ public:
 	inline std::vector<UTXO> getUTXOTable() const { return UTXOTable; }
 	inline std::vector<UTXO> getMyUTXOTable() const { return myUTXOTable; }
 
-	void setUTXOTable(std::vector<UTXO> & UTXOTable) const;		// 내부적으로 UTXOTable과 myUTXOTable을 구분해서 저장
+	void setUTXOTable(std::vector<UTXO> & UTXOTable);		// 내부적으로 UTXOTable과 myUTXOTable을 구분해서 저장
 
 	void printUTXOTable(std::ostream & o) const;
 	void printMyUTXOTable(std::ostream & o) const;

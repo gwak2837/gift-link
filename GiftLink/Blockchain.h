@@ -28,10 +28,12 @@ public:
 
 	Blockchain(std::string _name, const std::uint8_t * _recipientPublicKeyHash);
 
-	void addTransactionToPool(Transaction & _tx);
+	bool addTransactionToPool(Transaction & _tx);
 	bool produceBlock(const std::uint8_t * _recipientPublicKeyHash);
 
 	const Transaction & findPreviousTx(std::uint64_t blockHeight, const std::uint8_t * previousTxHash) const;
+	bool doesEveryInputReferToSTXO(const Transaction & tx) const;
+	bool doesEveryInputReferToUTXO(const Transaction & tx) const;
 	bool isUTXO(const Transaction & tx, int outputIndex) const;
 	bool findUTXOTable(std::vector<UTXO> & UTXOTable) const;
 	bool findMyUTXOTable(std::vector<UTXO> & myUTXOTable, const std::uint8_t * _recipientPublicKeyHash) const;	// -> test 필요함
@@ -42,7 +44,7 @@ public:
 
 	bool isValid(const Transaction & tx) const;
 	bool isValid() const;
-
+	
 	// getter method
 	std::string getFileName() const;
 	inline const Block * getGenesisBlock() const { return genesisBlock; }

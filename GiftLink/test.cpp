@@ -21,8 +21,26 @@ int main()
 	
 	vector<UTXO> myUTXO;
 	bc.findMyUTXOTable(myUTXO, w.getPublicKeyHash());
+	w.setUTXOTable(myUTXO);
 	
-	Transaction tx = w.createTransaction(1, recipient.getPublicKeyHash(), Type::GLC, 1000, 1, "from w to recipient 1000");
+	
+	Transaction tx;
+	if (w.createTransaction(tx, 1, recipient.getPublicKeyHash(), Type::GLC, 10, 1, "from w to recipient 1000")) {
+		cout << "Transaction was created!\n";
+	}
+	else {
+		cout << "No balance....\n";
+	}
+	
+	bc.addTransactionToPool(tx);
+	bc.produceBlock(w.getPublicKeyHash());
+
+	if (bc.isValid())
+		cout << "Valid blockchain!\n";
+	else
+		cout << "Invalid blockchain...\n";
+
+	bc.print(cout);
 
 	cout << "Test complete!\n";
 	system("pause");
