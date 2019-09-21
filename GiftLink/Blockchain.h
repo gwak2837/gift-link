@@ -31,7 +31,7 @@ public:
 	bool addTransactionToPool(Transaction & _tx);
 	bool produceBlock(const std::uint8_t * _recipientPublicKeyHash);
 
-	const Transaction & findPreviousTx(std::uint64_t blockHeight, const std::uint8_t * previousTxHash) const;
+	bool findPreviousTx(Transaction & previousTx, std::uint64_t blockHeight, const std::uint8_t * previousTxHash) const;
 	bool doesEveryInputReferToSTXO(const Transaction & tx) const;
 	bool doesEveryInputReferToUTXO(const Transaction & tx) const;
 	bool isUTXO(const Transaction & tx, int outputIndex) const;

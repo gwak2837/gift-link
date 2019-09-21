@@ -44,7 +44,8 @@ Blockchain::Blockchain(string _name, const uint8_t * _recipientPublicKeyHash) : 
 
 
 
-/* transaction pool에 transaction을 추가한다. */
+/* transaction pool에 transaction을 추가한다. 
+참조하는 Output이 없으면 일단 고아 거래 풀에 담김. */
 bool Blockchain::addTransactionToPool(Transaction & tx) {
 	if (!doesEveryInputReferToUTXO(tx))		// 모든 Input이 UTXO를 참조하는지
 		return false;
@@ -52,7 +53,7 @@ bool Blockchain::addTransactionToPool(Transaction & tx) {
 	if (!isValid(tx))						// 거래의 내용이 유효한지
 		return false;
 
-	txPool.push(tx);
+	txPool.push(tx);						
 	return true;
 }
 
@@ -65,12 +66,12 @@ Coinbase Transaction 생성 과정
 2. Output 설정
 3. Transaction 데이터 해싱 */
 bool Blockchain::produceBlock(const uint8_t * _recipientPublicKeyHash) {
-	if (txPool.size() < MAX_TRANSACTION_COUNT) {
+	if (txPool.size() < MAX_TRANSACTION_COUNT - 1) {
 		cout << "There aren't enough transactions in the memory pool to produce block...\n";
 		return false;
 	}
 
-	for (int i = 0; i < MAX_TRANSACTION_COUNT; i++) {		// Transaction Pool에서 tx을 가져와서 block에 넣는다.
+	for (int i = 0; i < MAX_TRANSACTION_COUNT - 1; i++) {		// Transaction Pool에서 tx을 가져와서 block에 넣는다.
 		assert(isValid(txPool.front()));					// 혹시나 tx가 Invalid하면 delete(메모리 해제)하고 큐에서 뺴기로
 		assert(doesEveryInputReferToUTXO(txPool.front()));	// Tx의 모든 Input이 참조하는 Output이 UTXO인지 확인하는 모듈
 		assert(waitingBlock != NULL);
@@ -92,9 +93,11 @@ bool Blockchain::produceBlock(const uint8_t * _recipientPublicKeyHash) {
 	map<Type, int64_t> mapTypeValue;
 	for (const Transaction & tx : waitingBlock->transactions) {		
 		for (const Input & input : tx.inputs) {
-			const Transaction & previousTx = findPreviousTx(input.blockHeight, input.previousTxHash);
-			const Output & previousOutput = previousTx.outputs[input.outputIndex];
+			Transaction previousTx;
+			if (!findPreviousTx(previousTx, input.blockHeight, input.previousTxHash))
+				return false;
 
+			const Output & previousOutput = previousTx.outputs[input.outputIndex];
 			auto iter = mapTypeValue.find(previousOutput.type);		// 이전 Output의 Type별 Value 합산 후 저장
 			if (iter != mapTypeValue.end())
 				iter->second += previousOutput.value;
@@ -160,9 +163,11 @@ bool Blockchain::isValid(const Transaction & tx) const {
 	map<Type, int64_t> mapTypeValue;
 
 	for (const Input & input : tx.inputs) {
-		const Transaction & previousTx = findPreviousTx(input.blockHeight, input.previousTxHash);	// 참조하는 Output이 없으면 일단 고아 거래 풀에 담김.
-		const Output & previosOutput = previousTx.outputs[input.outputIndex];
+		Transaction previousTx;
+		if (!findPreviousTx(previousTx, input.blockHeight, input.previousTxHash))
+			return false;
 
+		const Output & previosOutput = previousTx.outputs[input.outputIndex];
 		uint8_t senderPublicKeyHash[SHA256_DIGEST_VALUELEN];	// Input의 SHA256(pubKey)가 이전 Output의 pubKeyHash와 같은지
 		SHA256_Encrpyt(input.senderPublicKey, sizeof(input.senderPublicKey), senderPublicKeyHash);
 		if (!isMemoryEqual(previosOutput.recipientPublicKeyHash, senderPublicKeyHash, sizeof(senderPublicKeyHash)))
@@ -224,10 +229,9 @@ bool Blockchain::isValid() const {
 	return true;
 }
 
-/* 개발 중 : 모든 경로에서 값을 반환하지 않습니다. */
 /* 블록 높이와 거래 해시를 입력하면 이전 거래의 위치를 반환한다.
 찾지 못하면 NULL을 반환한다. */
-const Transaction & Blockchain::findPreviousTx(uint64_t blockHeight, const uint8_t * previousTxHash) const {
+bool Blockchain::findPreviousTx(Transaction & previousTx, uint64_t blockHeight, const uint8_t * previousTxHash) const {
 	assert(blockHeight < blockCount);
 
 	const Block * presentBlock = lastBlock;
@@ -235,17 +239,19 @@ const Transaction & Blockchain::findPreviousTx(uint64_t blockHeight, const uint8
 
 	for (const Transaction & tx : presentBlock->transactions) {
 		if (isMemoryEqual(tx.txHash, previousTxHash, sizeof(tx.txHash))) {
-			return tx;
+			previousTx = tx;
+			return true;
 		}
 	}
 
 	cout << "There is no previous transaction matched with hash...\n";
-	assert(false);
+	return false;
 }
 
 /* 해당 tx의 모든 input이 참조하는 Output이 1번 참조됐는지(사용됐는지)
 0번 참조된 경우 Unspent Transaction Output(UTXO)이기 때문에 false 반환
-2번 이상 참조된 경우 이중지불에 해당하기 때문에 false 반환 */
+2번 이상 참조된 경우 이중지불에 해당하기 때문에 false 반환 
+참조하는 이전 Tx가 없는 경우 false 반환*/
 bool Blockchain::doesEveryInputReferToSTXO(const Transaction & tx) const {
 	if (tx.isCoinbase()) {
 		if (tx.outputs[0].value != COINBASE_REWARD)
@@ -263,10 +269,13 @@ bool Blockchain::doesEveryInputReferToSTXO(const Transaction & tx) const {
 	}
 
 	for (const Input & input : tx.inputs) {
-		const Transaction & previousTx = findPreviousTx(input.blockHeight, input.previousTxHash); 	// 참조하는 Output이 없으면 false 반환.
-		int referencedCount = 0;
+		Transaction previousTx;
+		if (!findPreviousTx(previousTx, input.blockHeight, input.previousTxHash))	// 참조하는 Output이 없으면 false 반환.
+			return false;
 
+		int referencedCount = 0;
 		const Block * presentBlock = lastBlock;
+
 		for (size_t i = 0; i < blockCount; i++, presentBlock = presentBlock->previousBlock) {
 			for (const Transaction & _tx : presentBlock->transactions) {
 				for (const Input & _input : _tx.inputs) {
@@ -315,7 +324,9 @@ bool Blockchain::doesEveryInputReferToUTXO(const Transaction & tx) const {
 	}
 
 	for (const Input & input : tx.inputs) {
-		const Transaction & previousTx = findPreviousTx(input.blockHeight, input.previousTxHash); 	// 참조하는 Output이 없으면 false 반환.
+		Transaction previousTx;
+		if (!findPreviousTx(previousTx, input.blockHeight, input.previousTxHash)) 	// 참조하는 Output이 없으면 false 반환.
+			return false;
 
 		if (!isUTXO(previousTx, input.outputIndex))
 			return false;
@@ -364,6 +375,9 @@ bool Blockchain::findUTXOTable(std::vector<UTXO>& UTXOTable) const {
 }
 
 bool Blockchain::findMyUTXOTable(vector<UTXO> & myUTXOTable, const std::uint8_t * _recipientPublicKeyHash) const {
+	myUTXOTable.clear();
+	myUTXOTable.shrink_to_fit();
+
 	vector<UTXO> UTXOTable;
 	if (!findUTXOTable(UTXOTable)) {
 		return false;

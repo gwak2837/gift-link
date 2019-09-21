@@ -1,7 +1,7 @@
 #pragma once
 #ifndef BLOCK_H
 #define BLOCK_H
-#define MAX_TRANSACTION_COUNT 1			// 한 블록에 들어갈 수 있는 최대 transaction의 개수
+#define MAX_TRANSACTION_COUNT 2			// 한 블록에 들어갈 수 있는 최대 transaction의 개수
 #define VALID_TIMESTAMP_GAP 60			// 블록의 timestamp의 유효 범위
 #include <iostream>
 #include <vector>

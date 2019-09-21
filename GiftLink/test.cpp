@@ -8,6 +8,13 @@
 #include "Blockchain.h"
 using namespace std;
 
+
+/* 현재 아래 순서를 지켜야 함.
+1. UTXO Table 업데이트
+2. 거래 생성
+3. 채굴
+*/
+
 int main()
 {
 	Wallet recipient;
@@ -20,20 +27,39 @@ int main()
 	cout << bc.getName() << " was created\n\n";
 	
 	vector<UTXO> myUTXO;
+	Transaction tx;
+
 	bc.findMyUTXOTable(myUTXO, w.getPublicKeyHash());
 	w.setUTXOTable(myUTXO);
-	
-	
-	Transaction tx;
-	if (w.createTransaction(tx, 1, recipient.getPublicKeyHash(), Type::GLC, 10, 1, "from w to recipient 1000")) {
+	if (w.createTransaction(tx, 1, recipient.getPublicKeyHash(), Type::GLC, 1, 1, "from w to recipient 1000")) {
+		bc.addTransactionToPool(tx);
 		cout << "Transaction was created!\n";
 	}
-	else {
+	else
 		cout << "No balance....\n";
-	}
-	
-	bc.addTransactionToPool(tx);
 	bc.produceBlock(w.getPublicKeyHash());
+	
+	bc.findMyUTXOTable(myUTXO, w.getPublicKeyHash());
+	w.setUTXOTable(myUTXO);
+	if (w.createTransaction(tx, 1, recipient.getPublicKeyHash(), Type::GLC, 2, 2, "from w to recipient 1000")) {
+		bc.addTransactionToPool(tx);
+		cout << "Transaction was created!\n";
+	}
+	else
+		cout << "No balance....\n";
+	bc.produceBlock(w.getPublicKeyHash());
+	
+	bc.findMyUTXOTable(myUTXO, w.getPublicKeyHash());
+	w.setUTXOTable(myUTXO);
+	if (w.createTransaction(tx, 1, recipient.getPublicKeyHash(), Type::GLC, 3, 3, "from w to recipient 1000")) {
+		bc.addTransactionToPool(tx);
+		cout << "Transaction was created!\n";
+	}
+	else
+		cout << "No balance....\n";
+	bc.produceBlock(w.getPublicKeyHash());
+
+
 
 	if (bc.isValid())
 		cout << "Valid blockchain!\n";

@@ -27,7 +27,7 @@ Input::Input() {
 	memset(senderPublicKey, 0, sizeof(senderPublicKey));
 	memset(previousTxHash, 0, sizeof(previousTxHash));
 	outputIndex = -1;
-	blockHeight = -1;
+	blockHeight = UINT64_MAX;
 }
 
 Input::Input(const uint8_t * previousOutputPublicKeyHash, const uint8_t * _senderPublicKey,
