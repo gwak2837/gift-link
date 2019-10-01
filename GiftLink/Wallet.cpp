@@ -37,7 +37,7 @@ Transaction 생성 과정
 2. Output 설정
 3. Transaction 데이터 해싱 
 4. Transaction의 모든 Input에 서명 */
-bool Wallet::createTransaction(Transaction & _tx, int blockchainVersion, const uint8_t * _recipientPublicKeyHash, Type _type,
+bool Wallet::createTransaction(Transaction & _tx, int blockchainVersion, const uint8_t * _recipientPublicKeyHash, Type & _type,
 	int64_t value, int64_t fee, string memo) {
 
 	if (getMyUTXOAmount(_type) < value + fee) {

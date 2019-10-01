@@ -24,7 +24,7 @@ public:
 	Wallet();
 	Wallet(std::uint8_t * _privateKey);
 
-	bool createTransaction(Transaction & tx, int blockchainVersion, const std::uint8_t * _recipientPublicKeyHash, Type _type,
+	bool createTransaction(Transaction & tx, int blockchainVersion, const std::uint8_t * _recipientPublicKeyHash, Type & _type,
 		std::int64_t value, std::int64_t fee, std::string memo = "");
 
 	// getter method

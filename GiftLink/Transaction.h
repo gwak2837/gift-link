@@ -6,12 +6,26 @@
 #include <cstdint>
 #include <vector>
 #include <ctime>
+#include <cmath>
 #include <string>
 #include "KISA_SHA256.h"
 #include "uECC.h"
 
-enum class Type {
-	GLC, A, B, C, D, E, F, G, H, I
+enum class State {
+	own, sale, spent
+};
+
+class Type {
+public:
+	std::string name;
+	std::int64_t faceValue;
+	std::int64_t marketValue;
+	time_t expirataionDate;
+
+	Type() : name("GiftLink Coin"), faceValue(0), marketValue(0), expirataionDate(pow(2, sizeof(time_t) * 8 - 1) - 1) {}					// GLC 생성 시
+	Type(std::string _n, std::int64_t _f, std::int64_t _m, time_t _e) : name(_n), faceValue(_f), marketValue(_m), expirataionDate(_e) {}	// 유가증권 이름, 액면가, 시장가, 유효기간 설정
+
+	void print(std::ostream & o) const;
 };
 
 class Output {
@@ -19,8 +33,8 @@ public:
 	std::uint8_t recipientPublicKeyHash[SHA256_DIGEST_VALUELEN];	// P2PKH. pubKeyHash(32 bytes)
 	std::int64_t value;
 	Type type;
+	State state;
 
-	Output() {}
 	Output(const std::uint8_t * _recipientPublicKeyHash, std::int64_t _value, Type _type);
 
 	void print(std::ostream & o) const;

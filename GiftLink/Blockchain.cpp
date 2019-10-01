@@ -43,10 +43,12 @@ Blockchain::Blockchain(string _name, const uint8_t * _recipientPublicKeyHash) : 
 
 
 
-
+/* 개발 중 */
 /* transaction pool에 transaction을 추가한다. 
 참조하는 Output이 없으면 일단 고아 거래 풀에 담김. */
 bool Blockchain::addTransactionToPool(Transaction & tx) {
+	// if(tx.isValid())
+
 	if (!doesEveryInputReferToUTXO(tx))		// 모든 Input이 UTXO를 참조하는지
 		return false;
 
