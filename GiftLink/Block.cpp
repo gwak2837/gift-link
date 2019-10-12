@@ -98,27 +98,58 @@ uint8_t * Block::createBlockHeader() const {
 
 /* 보완점? */
 bool Block::isValid() const {
-	if (previousBlock != NULL) {		
-		if(previousBlock->timestamp - VALID_TIMESTAMP_GAP > timestamp) {	// 블록의 timestamp 간격이 적절한지
-			cout << "\n" << height << "th block timestamp is invalid...\n";
+	if (transactions.size() == 0) {						// 블록에 거래가 하나도 없으면
+		cout << "There is no transaction in " << height << "th block...\n";
+		return false;
+	}
+
+	//if (!isValidBits())
+	//	return false;
+
+	size_t coinbaseTxCount = 0;
+	size_t txCount = 0;
+	Transaction coinbaseTx;
+	for (const Transaction & tx : transactions) {
+		if (tx.isCoinbase()) {
+			coinbaseTx = tx;
+			coinbaseTxCount++;
+			if (coinbaseTxCount > 1) {					// 블록에 코인베이스 거래가 1개를 초과하면
+				cout << "There are coinbase transactions more than one in " << height << "th block...\n";
+				return false;
+			}
+		}
+		txCount++;
+		if (txCount > MAX_TRANSACTION_COUNT) {
+			cout << "There are transaction more than max tx count in " << height << "th block...\n";
 			return false;
 		}
-		if (!isMemoryEqual(previousBlock->blockHash, previousBlockHash, sizeof(previousBlockHash))) {	// previousBlockHash가 유효한지
-			cout << "\n" << height << "th block previousBlockHash is invalid...\n";
+	}
+		
+	if (previousBlock != NULL) {		
+		if(previousBlock->timestamp >= timestamp) {		// 이전 블록의 timestamp 비교
+			cout << height << "th block timestamp is invalid...\n";
+			return false;
+		}
+		if (!isMemoryEqual(previousBlock->blockHash, previousBlockHash, sizeof(previousBlockHash))) {	// previousBlockHash가 다르면
+			cout << height << "th block previousBlockHash is invalid...\n";
 				return false;
 		}
+
+		Transaction previousBlockCoinbaseTx;
+		for (const Transaction & tx : previousBlock->transactions) {
+			if (tx.isCoinbase())
+				previousBlockCoinbaseTx = tx;
+		}
+		
+		assert(coinbaseTx.outputs.size() > 0 && previousBlockCoinbaseTx.outputs.size() > 0);
+		//if (isMemoryEqual(coinbaseTx.outputs[0].recipientPublicKeyHash, previousBlockCoinbaseTx.outputs[0].recipientPublicKeyHash, sizeof(coinbaseTx.outputs[0].recipientPublicKeyHash)))		// 연속 2회 이상 동일 주소로 블록 생성 시
+		//	return false;
 	}
 	
 	const uint8_t * _merkleRoot = createMerkleRoot();
 
-	if (_merkleRoot == NULL) {		// 블록에 거래가 포함되어 있는지
-		cout << "\nThere is no transaction in " << height << "th block...\n";
-		delete[] _merkleRoot;
-		return false;
-	}
-
-	if (!isMemoryEqual(merkleRoot, _merkleRoot, sizeof(merkleRoot))) {		// Transaction 해싱 결과 merkleRoot와 일치하는지
-		cout << "\n" << height << "th block merkleRoot is invalid...\n";	// 원인: 머클트리 잘못 계산, Transaction 내용 변경
+	if (!isMemoryEqual(merkleRoot, _merkleRoot, sizeof(merkleRoot))) {		// Merkle Root 계산이 틀리면
+		cout << height << "th block merkleRoot is invalid...\n";				// 원인: 머클트리 잘못 계산, Transaction 내용 변경
 		delete[] _merkleRoot;
 		return false;
 	}
@@ -129,12 +160,12 @@ bool Block::isValid() const {
 	SHA256_Encrpyt(blockHeader, getBlockHeaderSize(), _blockHash);
 	delete[] blockHeader;
 
-	if (!isMemoryEqual(blockHash, _blockHash, sizeof(blockHash))) {	// Block Header 해싱 결과 blockHashd와 일치하는지
+	if (!isMemoryEqual(blockHash, _blockHash, sizeof(blockHash))) {			// Block Hash 값이 틀리면
 		cout << "\n" << height << "th block blockHash is invalid...\n";
 		return false;
 	}
 
-	if (!miningSuccess()) {			// blockHash가 목표값에 도달했는지
+	if (!miningSuccess()) {													// Block Hash가 bit와 다르면
 		cout << "\n" << height << "th block mining is invalid...\n";
 		return false;
 	}
@@ -222,12 +253,4 @@ const uint8_t * Block::createMerkleRoot() const {
 
 	return txHashes[0];
 }
-
-
-
-
-
-
-
-
 

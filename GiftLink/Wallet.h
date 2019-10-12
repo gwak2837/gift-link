@@ -17,25 +17,27 @@ class Wallet {
 
 	const struct uECC_Curve_t * curve = uECC_secp256r1();
 
+public:
 	std::vector<UTXO> UTXOTable;
 	std::vector<UTXO> myUTXOTable;
 
-public:
 	Wallet();
 	Wallet(std::uint8_t * _privateKey);
 
-	bool createTransaction(Transaction & tx, int blockchainVersion, const std::uint8_t * _recipientPublicKeyHash, Type & _type,
+	bool createTransaction(Transaction & tx, int blockchainVersion, const std::uint8_t * recipientPublicKeyHash, Type & type,
 		std::int64_t value, std::int64_t fee, std::string memo = "");
+
+	bool createTransactionSwitchState(Transaction & tx, int blockchainVersion, const std::uint8_t * recipientPublicKeyHash, Type & type,
+		std::int64_t value, std::int64_t fee, const State state, std::string memo = "");
+
+	//bool createTransactionPurchaseSale(tx, 1, recipientPublicKeyHash, type, 99, fee, "GiftCard LoveShinak : P2P Trade");
 
 	// getter method
 	inline const std::uint8_t * getPrivateKey() const { return privateKey; }
 	inline const std::uint8_t * getPublicKey() const { return publicKey; }
 	inline const std::uint8_t * getPublicKeyHash() const { return publicKeyHash; }
-	std::int64_t getMyUTXOAmount(Type _type) const;
-	inline std::vector<UTXO> getUTXOTable() const { return UTXOTable; }
-	inline std::vector<UTXO> getMyUTXOTable() const { return myUTXOTable; }
-
-	void setUTXOTable(std::vector<UTXO> & UTXOTable);		// 내부적으로 UTXOTable과 myUTXOTable을 구분해서 저장
+	std::int64_t getMyUTXOAmount(const Type type) const;
+	std::int64_t getMyUTXOAmount(const Type type, const State state) const;
 
 	void printUTXOTable(std::ostream & o) const;
 	void printMyUTXOTable(std::ostream & o) const;

@@ -9,13 +9,24 @@
 #include "Utility.h"
 using namespace std;
 
-std::ostream& operator<<(std::ostream & o, Type & type);
+ostream & operator<<(ostream & o, Type & type);
+ostream & operator<<(ostream & o, State & state);
 
-Output::Output(const std::uint8_t * _recipientPublicKeyHash, std::int64_t _value, Type _type) : value(_value), type(_type) {
+void Type::print(ostream & o) const {
+	if (*this == Type())
+		o << this->name;
+	else
+		o << this->name << ", " << this->faceValue << ", " << this->marketValue << ", " << timeToString(this->expirataionDate);
+	o << '\n';
+}
+
+
+
+Output::Output(const std::uint8_t * _recipientPublicKeyHash, std::int64_t _value, Type _type, State _state) : value(_value), type(_type), state(_state) {
 	memcpy(recipientPublicKeyHash, _recipientPublicKeyHash, sizeof(recipientPublicKeyHash));
 }
 
-void Output::print(std::ostream & o) const {
+void Output::print(ostream & o) const {
 	o << "Recipient Public Key Hash: " << recipientPublicKeyHash << '\n';
 	o << "Value: " << value << '\n';
 }
@@ -33,6 +44,7 @@ Input::Input() {
 Input::Input(const uint8_t * previousOutputPublicKeyHash, const uint8_t * _senderPublicKey,
 	const uint8_t * _previousTxHash, int _outputIndex, uint64_t _blockHeight)
 	: outputIndex(_outputIndex), blockHeight(_blockHeight) {
+	memset(signature, 0, sizeof(signature));
 	memcpy(signature, previousOutputPublicKeyHash, SHA256_DIGEST_VALUELEN);
 	memcpy(senderPublicKey, _senderPublicKey, sizeof(senderPublicKey));
 	memcpy(previousTxHash, _previousTxHash, sizeof(previousTxHash));
@@ -44,14 +56,84 @@ Transaction::Transaction(vector<Input> & _inputs, vector<Output> & _outputs, int
 	: inputs(_inputs), outputs(_outputs), version(_version), memo(_memo) {
 	timestamp = time(NULL);
 
-	uint8_t * txData = createTxData();
+	const uint8_t * txData = createTxData();
+
+
+
+
+	//DEBUG
+	//int i = 0;
+	//cout << memo << '\n';
+	//cout << "0x";
+	//for (int j = 0; j < 4; i++, j++) {
+	//	cout.width(2);
+	//	cout.fill('0');
+	//	cout << hex << (int)txData[i];
+	//}
+	//cout << "\nInput : \n";
+	//for (int j = 0; j < inputs.size() * (sizeof(inputs[0].previousTxHash) + sizeof(inputs[0].outputIndex) + sizeof(outputs[0].recipientPublicKeyHash)); i++, j++) {
+	//	cout.width(2);
+	//	cout.fill('0');
+	//	cout << hex << (int)txData[i];
+	//}
+	//cout << "\nOutput : \n";
+	//for (int j = 0; j < outputs.size() * (sizeof(outputs[0].value) + sizeof(outputs[0].type) + sizeof(outputs[0].state) + sizeof(outputs[0].recipientPublicKeyHash)); i++, j++) {
+	//	cout.width(2);
+	//	cout.fill('0');
+	//	cout << hex << (int)txData[i];
+	//}
+	//cout << "\nTimestamp + Hashcode + memo : \n";
+	//for (int j = 0; j < sizeof(timestamp) + 4 + memo.length(); i++, j++) {
+	//	cout.width(2);
+	//	cout.fill('0');
+	//	cout << hex << (int)txData[i];
+	//}
+	//cout << dec;
+	//cout << '\n';
+
+
+	
+
+
+
+
+
+	//DEBUG
+	//int i = 0;
+	//cout << testTx.memo << '\n';
+	//cout << "0x";
+	//for (int j = 0; j < 4; i++, j++) {
+	//	cout.width(2);
+	//	cout.fill('0');
+	//	cout << hex << (int)testTxData[i];
+	//}
+	//cout << "\nInput : \n";
+	//for (int j = 0; j < testTx.inputs.size() * (sizeof(testTx.inputs[0].previousTxHash) + sizeof(testTx.inputs[0].outputIndex) + sizeof(testTx.outputs[0].recipientPublicKeyHash)); i++, j++) {
+	//	cout.width(2);
+	//	cout.fill('0');
+	//	cout << hex << (int)testTxData[i];
+	//}
+	//cout << "\nOutput : \n";
+	//for (int j = 0; j < testTx.outputs.size() * (sizeof(testTx.outputs[0].value) + sizeof(testTx.outputs[0].type) + sizeof(testTx.outputs[0].state) + sizeof(testTx.outputs[0].recipientPublicKeyHash)); i++, j++) {
+	//	cout.width(2);
+	//	cout.fill('0');
+	//	cout << hex << (int)testTxData[i];
+	//}
+	//cout << "\nTimestamp + Hashcode + memo : \n";
+	//for (int j = 0; j < sizeof(testTx.timestamp) + 4 + testTx.memo.length(); i++, j++) {
+	//	cout.width(2);
+	//	cout.fill('0');
+	//	cout << hex << (int)testTxData[i];
+	//}
+	//cout << dec;
+	//cout << '\n';
+
+
 
 	SHA256_Encrpyt(txData, (unsigned int)getTxDataSize(), txHash);
 	delete[] txData;
 }
 
-
-/* 기획 의도에 맞게 수정 필요 */
 uint8_t * Transaction::createTxData() const {
 	size_t i = 0;									// txData index
 	uint8_t * txData = new BYTE[getTxDataSize()];	// Assertion: getTxSize와 i의 최종 값은 동일해야 한다.
@@ -60,7 +142,7 @@ uint8_t * Transaction::createTxData() const {
 	memcpy(txData + i, &version, sizeof(version));
 	i += sizeof(version);
 
-	for (Input input : inputs) {
+	for (const Input input : inputs) {
 		memcpy(txData + i, input.previousTxHash, sizeof(input.previousTxHash));
 		i += sizeof(input.previousTxHash);
 
@@ -71,12 +153,24 @@ uint8_t * Transaction::createTxData() const {
 		i += sizeof(outputs[0].recipientPublicKeyHash);
 	}
 
-	for (Output output : outputs) {
+	for (const Output output : outputs) {
 		memcpy(txData + i, &output.value, sizeof(output.value));
 		i += sizeof(output.value);
 
-		memcpy(txData + i, &output.type, sizeof(output.type));
-		i += sizeof(output.type);
+		memcpy(txData + i, output.type.name.c_str(), output.type.name.length());
+		i += output.type.name.length();
+
+		memcpy(txData + i, &output.type.faceValue, sizeof(output.type.faceValue));
+		i += sizeof(output.type.faceValue);
+
+		memcpy(txData + i, &output.type.marketValue, sizeof(output.type.marketValue));
+		i += sizeof(output.type.marketValue);
+
+		memcpy(txData + i, &output.type.expirataionDate, sizeof(output.type.expirataionDate));
+		i += sizeof(output.type.expirataionDate);
+
+		memcpy(txData + i, &output.state, sizeof(output.state));
+		i += sizeof(output.state);
 
 		memcpy(txData + i, output.recipientPublicKeyHash, sizeof(output.recipientPublicKeyHash));
 		i += sizeof(output.recipientPublicKeyHash);
@@ -96,30 +190,62 @@ uint8_t * Transaction::createTxData() const {
 	return txData;
 }
 
+size_t Transaction::getTxDataSize() const {
+	assert(inputs.size() > 0);
+	assert(outputs.size() > 0);
+	size_t txDataSize = inputs.size() * (sizeof(inputs[0].previousTxHash) + sizeof(inputs[0].outputIndex) + sizeof(outputs[0].recipientPublicKeyHash))
+		+ sizeof(version) + sizeof(timestamp) + 4 + memo.length();
+
+	for (const Output output : outputs) {
+		txDataSize += sizeof(output.value) + output.type.name.length() + sizeof(output.type.faceValue) + sizeof(output.type.marketValue)
+			+ sizeof(output.type.expirataionDate) + sizeof(output.state) + sizeof(output.recipientPublicKeyHash);
+	}
+
+	return txDataSize;
+}
+
+// input 형태 검사로 코인베이스 거래 판별
 bool Transaction::isCoinbase() const {
-	if (inputs.size() != 1)
+	if (inputs.size() != 1 || outputs.size() == 0)					// input 1개, output 1개 이상
 		return false;
 
-	if (inputs[0].outputIndex != -1 || inputs[0].blockHeight != -1)
+	if (inputs[0].outputIndex != -1)								// outputIndex는 -1
 		return false;
 
-	for (int i = 0; i < sizeof(inputs[0].previousTxHash); i++) {
+	for (int i = 0; i < sizeof(inputs[0].previousTxHash); i++) {	// previousTxHash 전부 0
 		if (inputs[0].previousTxHash[i] != 0)
 			return false;
 	}
 
-	for (int i = 0; i < sizeof(inputs[0].senderPublicKey); i++) {
+	for (int i = 0; i < sizeof(inputs[0].senderPublicKey); i++) {	// senderPublicKey 전부 0
 		if (inputs[0].senderPublicKey[i] != 0)
 			return false;
 	}
 
-	for (int i = 0; i < sizeof(inputs[0].signature); i++) {
+	for (int i = 0; i < sizeof(inputs[0].signature); i++) {			// signature 전부 0
 		if (inputs[0].signature[i] != 0)
 			return false;
 	}
 
 	return true;
 }
+
+// 서명+해시+공개키 유효성 검사
+bool Transaction::isValid() const {
+	if (inputs.size() == 0)
+		return false;
+
+	if (!isCoinbase()) {
+		for (const Input & input : inputs) {
+			if (uECC_verify(input.senderPublicKey, txHash, SHA256_DIGEST_VALUELEN, input.signature, uECC_secp256r1()) == 0)
+				return false;
+		}
+	}
+
+	return true;
+}
+
+
 
 void Transaction::print(ostream & o) const {
 	o << "Transaction Hash: " << txHash << '\n';
@@ -140,21 +266,40 @@ void Transaction::print(ostream & o) const {
 	o << "-Transaction Output-\n";
 	for (Output output : outputs) {
 		o << "Recipient Public Key Hash: " << output.recipientPublicKeyHash << '\n';
-		o << "Type:                      " << output.type << '\n';
+		o << "Type:                      ";
+		output.type.print(o);
+		o << "State:                     " << output.state << '\n';
 		o << "Value:                     " << output.value << "\n\n";
 	}
 }
 
 ostream & operator<<(ostream & o, Type & type) {
-	switch (type) {
-	case Type::A:
-		return o << "GiftCard A";
-	case Type::GLC:
-		return o << "GiftLink Coin";
-	default:
-		return o << "Undefined";
-	}
+	if (type == Type())
+		return o << type.name;
+	else
+		return o << type.name << ", " << type.faceValue << ", " << type.marketValue << ", " << timeToString(type.expirataionDate);
 }
+
+ostream & operator<<(ostream& o, State & state) {
+	switch (state) {
+	case State::own:
+		o << "OWN";
+		break;
+	case State::sale:
+		o << "SALE";
+		break;
+	case State::spent:
+		o << "SPENT";
+		break;
+	default:
+		o << "UNDEFINED...\n";
+		break;
+	}
+
+	return o;
+}
+
+
 
 UTXO::UTXO(const std::uint8_t * _txHash, Output _output, int _outputIndex, std::uint64_t _blockHeight) : output(_output), 
 	outputIndex(_outputIndex), blockHeight(_blockHeight) {
@@ -166,6 +311,61 @@ void UTXO::print(std::ostream & o) const {
 	output.print(o);
 }
 
+
+
+bool operator==(const Type & obj, const Type &obj2) {
+	if (obj.name != obj2.name)
+		return false;
+
+	if (obj.faceValue != obj2.faceValue)
+		return false;
+
+	if (obj.marketValue != obj2.marketValue)
+		return false;
+
+	if (obj.expirataionDate != obj2.expirataionDate)
+		return false;
+
+	return true;
+}
+
+bool operator!=(const Type & obj, const Type &obj2) {
+	return !(obj == obj2);
+}
+
+bool operator<(const Type & type, const Type & type2) {
+	return type.expirataionDate < type2.expirataionDate;
+}
+
+bool operator==(const Output & obj, const Output & obj2) {
+	if (!isMemoryEqual(obj.recipientPublicKeyHash, obj2.recipientPublicKeyHash, sizeof(obj.recipientPublicKeyHash)))
+		return false;
+
+	if (obj.value != obj2.value)
+		return false;
+
+	if (obj.type == Type() && obj2.type == Type()) {
+		if (obj.state != State::own || obj2.state != State::own) {
+			return false;
+		}
+		return true;
+	}
+
+	if (obj.type != obj2.type)
+		return false;
+
+	//if (state != obj.state)	find 함수에서 블록 생성 시 상태를 마음대로 설정할 수 있기 때문에
+	//	return false;
+
+	return true;
+}
+
+bool operator!=(const Output & obj, const Output & obj2) {
+	return !(obj == obj2);
+}
+
 bool operator<(const UTXO & utxo1, const UTXO & utxo2) {
 	return utxo1.output.value > utxo2.output.value;
 }
+
+
