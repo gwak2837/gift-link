@@ -72,19 +72,22 @@ Coinbase Transaction 생성 과정
 2. Output 설정
 3. Transaction 데이터 해싱 */
 bool Blockchain::produceBlock(const uint8_t * recipientPublicKeyHash, int txCount, State feeState) {
-	if (txPool.size() == 0) {
-		cout << "There aren't enough transactions in the memory pool to produce block...\n";
-		return false;
-	}
+	//if (txPool.size() == 0) {
+	//	cout << "There aren't enough transactions in the memory pool to produce block...\n";
+	//	return false;
+	//}
+	assert(waitingBlock != NULL);
 
 	if (txCount > MAX_TRANSACTION_COUNT)
 		txCount = MAX_TRANSACTION_COUNT;
 
 	auto iter = txPool.begin();
-	for (size_t count = 0; count < MAX_TRANSACTION_COUNT - 1 && iter != txPool.end(); count++) {
-		assert(isValid(txPool.front(), 0));					// 혹시나 tx가 Invalid하면 delete(메모리 해제)하고 큐에서 뺴기로
-		assert(waitingBlock != NULL);
-		waitingBlock->transactions.push_back(*iter);
+	for (size_t count = 0; count < MAX_TRANSACTION_COUNT - 1 && iter != txPool.end(); count++) {		//*******************waitingBlock까지 검사
+		if (isValid(txPool.front(), 0))
+			waitingBlock->transactions.push_back(*iter);
+		else
+			cout << "issueSecurities : Invalid Transaction in Tx Pool...\n";
+
 		iter = txPool.erase(iter);
 	}
 
@@ -126,11 +129,13 @@ bool Blockchain::produceBlock(const uint8_t * recipientPublicKeyHash, int txCoun
 	return true;
 }
 
+//************** 블록 생성 함수랑 합치기
 bool Blockchain::issueSecurities(const uint8_t * recipientPublicKeyHash, int txCount, Type & type, int issueAmount, const State securitiesState, const State feeState) {
 	//if (txPool.size() == 0) {
 	//	cout << "There aren't enough transactions in the memory pool to produce block...\n";
 	//	return false;
 	//}
+	assert(waitingBlock != NULL);
 
 	if (txCount > MAX_TRANSACTION_COUNT)
 		txCount = MAX_TRANSACTION_COUNT;
@@ -140,9 +145,11 @@ bool Blockchain::issueSecurities(const uint8_t * recipientPublicKeyHash, int txC
 
 	auto iter = txPool.begin();
 	for (size_t count = 0; count < txCount - 1 && iter != txPool.end(); count++) {
-		assert(isValid(txPool.front(), 0));					// 혹시나 tx가 Invalid하면 delete(메모리 해제)하고 큐에서 뺴기로
-		assert(waitingBlock != NULL);
-		waitingBlock->transactions.push_back(*iter);
+		if (isValid(txPool.front(), 0))						// tx가 Invalid하면 delete(메모리 해제)하고 큐에서 뺴기로
+			waitingBlock->transactions.push_back(*iter);
+		else
+			cout << "issueSecurities : Invalid Transaction in Tx Pool...\n";
+
 		iter = txPool.erase(iter);
 	}
 
@@ -246,6 +253,11 @@ bool Blockchain::isValidCoinbase(const Block * block, const Transaction & coinba
 	else if (coinbaseType == CoinbaseType::administratorCoinbase) {										// 관리자 블록의 코인베이스이면
 		if (coinbaseTx.outputs[0].value != 0)																// 블록 생성 보상 없음
 			return false;
+
+		for (const Output & output : coinbaseTx.outputs) {												// 거래의 모든 output의 주소가				
+			if (!isAdministratorAddress(output.recipientPublicKeyHash))										// 관리자인지
+				return false;
+		}
 	}
 	else																								// 블록 생성인데 state가 이상한 것
 		return false;
@@ -318,13 +330,19 @@ bool Blockchain::isValid(const Transaction & tx, int previousOutputReferenceCoun
 		if (!isTxOutputReferenceCount(previousTx, input.outputIndex, previousOutputReferenceCount))	// 이전 Output 참조 횟수 검사
 			return false;
 
-		const Output & previosOutput = previousTx.outputs[input.outputIndex];
+		if (previousTx.outputs[input.outputIndex].state == State::spent)				// 사용된 유가증권을 참조하고 있으면
+			return false;
+
+		if (previousTx.timestamp >= tx.timestamp)										// 시간 간격
+			return false;
+
+		const Output & previousOutput = previousTx.outputs[input.outputIndex];
 		memset(testTx.inputs[inputIndex].signature, 0, sizeof(testTx.inputs[inputIndex].signature));
-		memcpy(testTx.inputs[inputIndex].signature, previosOutput.recipientPublicKeyHash, sizeof(previosOutput.recipientPublicKeyHash));
+		memcpy(testTx.inputs[inputIndex].signature, previousOutput.recipientPublicKeyHash, sizeof(previousOutput.recipientPublicKeyHash));
 
 		uint8_t senderPublicKeyHash[SHA256_DIGEST_VALUELEN];
 		SHA256_Encrpyt(input.senderPublicKey, sizeof(input.senderPublicKey), senderPublicKeyHash);
-		if (!isMemoryEqual(previosOutput.recipientPublicKeyHash, senderPublicKeyHash, sizeof(senderPublicKeyHash)))	// SHA256(input.senderPubKey) == 이전 Output의 pubKeyHash
+		if (!isMemoryEqual(previousOutput.recipientPublicKeyHash, senderPublicKeyHash, sizeof(senderPublicKeyHash)))	// SHA256(input.senderPubKey) == 이전 Output의 pubKeyHash
 			return false;
 
 		inputIndex++;
@@ -393,6 +411,19 @@ bool Blockchain::isValid() const {
 	return true;
 }
 
+bool Blockchain::isAdministratorAddress(const std::uint8_t * recipientPublicKeyHash) const {
+	vector<uint8_t *> administratorAddresses;
+	uint8_t administratorAddress[SHA256_DIGEST_VALUELEN] = { 0x39, 0xdc, 0x22, 0x7d, 0x9b, 0x8c, 0x3e, 0xb9, 0xd1, 0xe8, 0x84, 0x20,
+	   0xd4, 0xe3, 0x6f, 0x1d, 0x9b, 0xa0, 0x91, 0xa1, 0xe5, 0xef, 0xf8, 0xd4, 0xc7, 0x50, 0xb1, 0x31, 0x5f, 0x61, 0xe4, 0xfd };
+	administratorAddresses.push_back(administratorAddress);
+
+	for (const uint8_t * administratorAddress : administratorAddresses) {
+		if (isMemoryEqual(recipientPublicKeyHash, administratorAddress, sizeof(administratorAddress)))
+			return true;
+	}
+
+	return false;
+}
 
 /* 블록 높이와 거래 해시를 입력하면 이전 거래를 반환한다. */
 bool Blockchain::findPreviousTx(Transaction & previousTx, const uint8_t * previousTxHash, uint64_t blockHeight) const {
@@ -413,7 +444,7 @@ bool Blockchain::findPreviousTx(Transaction & previousTx, const uint8_t * previo
 }
 
 bool Blockchain::isTxOutputReferenceCount(const Transaction & tx, size_t outputIndex, uint64_t referenceCount) const {
-	//if (tx.isCoinbase())   // 왜 넣었지?
+	//if (tx.isCoinbase())   // 왜 넣었지? 넣으면 안 되는데
 	//	return false;
 
 	if (referenceCount != 0 && referenceCount != 1)
@@ -422,9 +453,12 @@ bool Blockchain::isTxOutputReferenceCount(const Transaction & tx, size_t outputI
 	if (lastBlock == NULL)
 		return false;
 
+	assert(waitingBlock != NULL);
+	assert(waitingBlock->previousBlock == lastBlock);
+
 	uint64_t _referenceCount = 0;
-	const Block * presentBlock = lastBlock;
-	for (size_t i = 0; i < blockCount; i++, presentBlock = presentBlock->previousBlock) {
+	const Block * presentBlock = waitingBlock;
+	for (size_t i = 0; i < blockCount + 1; i++, presentBlock = presentBlock->previousBlock) {
 		for (const Transaction & _tx : presentBlock->transactions) {
 			for (const Input & input : _tx.inputs) {
 				if (isMemoryEqual(input.previousTxHash, tx.txHash, sizeof(tx.txHash)) && input.outputIndex == outputIndex) {

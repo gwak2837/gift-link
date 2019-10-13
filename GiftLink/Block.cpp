@@ -228,8 +228,11 @@ const uint8_t * Block::createMerkleRoot() const {
 	}
 
 	while (txHashes.size() > 1) {
-		if (txHashes.size() % 2 != 0)				// Tx 개수가 홀수이면 제일 마지막 Tx를 복사해서 짝수로 만든다.
-			txHashes.push_back(txHashes.back());
+		if (txHashes.size() % 2 != 0) {										// Tx 개수가 홀수이면 제일 마지막 Tx를 복사해서 짝수로 만든다.
+			uint8_t * txHash = new uint8_t[SHA256_DIGEST_VALUELEN];			// 깊은 복사(얕은 복사 시 오류 발생)
+			memcpy(txHash, txHashes.back(), SHA256_DIGEST_VALUELEN);
+			txHashes.push_back(txHash);
+		}
 
 		assert(txHashes.size() % 2 == 0);
 

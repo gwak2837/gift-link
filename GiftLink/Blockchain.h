@@ -36,8 +36,8 @@ public:
 	Blockchain(std::string _name, const std::uint8_t * _recipientPublicKeyHash);
 
 	bool addTransactionToPool(Transaction & _tx);
-	bool produceBlock(const std::uint8_t * _recipientPublicKeyHash, int txCount, const State feeState = State::own);
-	bool issueSecurities(const std::uint8_t * _recipientPublicKeyHash, int txCount, Type & type, int issueAmount, const State securitiesState, const State feeState = State::own);
+	bool produceBlock(const std::uint8_t * recipientPublicKeyHash, int txCount, const State feeState = State::own);
+	bool issueSecurities(const std::uint8_t * recipientPublicKeyHash, int txCount, Type & type, int issueAmount, const State securitiesState, const State feeState = State::own);
 
 	bool findPreviousTx(Transaction & previousTx, const std::uint8_t * previousTxHash, std::uint64_t blockHeight) const;
 	bool isTxOutputReferenceCount(const Transaction & tx, size_t txOutputIndex, std::uint64_t referenceCount) const;
@@ -55,6 +55,7 @@ public:
 	bool isValidCoinbase(const Block * block, const Transaction & coinbaseTx, CoinbaseType coinbaseType) const;
 	bool isValid(const Transaction & tx, int previousOutputReferenceCount) const;	// 블록체인 단위 거래 유효성 검사
 	bool isValid() const;															// 블록체인 유효성 검사
+	bool isAdministratorAddress(const std::uint8_t * recipientPublicKeyHash) const;
 
 	
 	// getter method

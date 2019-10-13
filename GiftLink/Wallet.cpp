@@ -18,7 +18,7 @@ Wallet::Wallet() {
 		cout << "An error occurred when generating the key pair...\n";
 }
 
-Wallet::Wallet(uint8_t * _privateKey) {
+Wallet::Wallet(const uint8_t * _privateKey) {
 	memcpy(privateKey, _privateKey, SECP256R1_NUM_BYTES);
 
 	if (uECC_compute_public_key(privateKey, publicKey, curve)) {
@@ -38,7 +38,7 @@ Transaction 생성 과정
 2. Output 설정
 3. Transaction 데이터 해싱 
 4. Transaction의 모든 Input에 서명 */
-bool Wallet::createTransaction(Transaction & _tx, int blockchainVersion, const uint8_t * _recipientPublicKeyHash, Type & type,
+bool Wallet::createTransaction(Transaction & tx, int blockchainVersion, const uint8_t * _recipientPublicKeyHash, Type & type,
 	int64_t value, int64_t fee, string memo) {
 
 	if (getMyUTXOAmount(type) < value + fee) {
@@ -48,11 +48,9 @@ bool Wallet::createTransaction(Transaction & _tx, int blockchainVersion, const u
 
 	vector<Input> inputs;
 	int64_t inputSum = 0;
-	// 자신의 UTXO를 Greedy 방법으로 선택
-	// input.signature에 참조할 UTXO의 pubKeyHash(32 byte) 입력 
-	for (UTXO & utxo : myUTXOTable) {
+	for (UTXO & utxo : myUTXOTable) {	// 자신의 UTXO를 Greedy 방법으로 선택
 		if (value + fee > inputSum) {
-			Input input(utxo.output.recipientPublicKeyHash, publicKey, utxo.txHash, utxo.outputIndex, utxo.blockHeight);
+			Input input(utxo.output.recipientPublicKeyHash, publicKey, utxo.txHash, utxo.outputIndex, utxo.blockHeight);	// input.signature에 참조할 UTXO의 pubKeyHash(32 byte) 입력 
 			inputs.push_back(input);
 			inputSum += utxo.output.value;
 		}
@@ -68,19 +66,20 @@ bool Wallet::createTransaction(Transaction & _tx, int blockchainVersion, const u
 		outputs.push_back(output2);
 	}
 		
-	Transaction tx(inputs, outputs, blockchainVersion, memo);	// Tx 데이터 추출 후 Tx의 txHash 계산
+	Transaction tempTx(inputs, outputs, blockchainVersion, memo);	// Tx 데이터 추출 후 Tx의 txHash 계산
 
-	for (Input & input : tx.inputs) { 
-		if (uECC_sign(privateKey, tx.txHash, sizeof(tx.txHash), input.signature, curve) == 0) {
+	for (Input & input : tempTx.inputs) { 
+		if (uECC_sign(privateKey, tempTx.txHash, sizeof(tempTx.txHash), input.signature, curve) == 0) {
 			cout << "An error occurred when generating the signature...\n";
 			return false;
 		}
 	}
 
-	_tx = tx;
+	tx = tempTx;
 	return true;
 }
 
+//*************************createTransaction 이랑 겹치는 부분(=처음 빼고 전부) 합치기
 bool Wallet::createTransactionSwitchState(Transaction & tx, int blockchainVersion, const std::uint8_t * recipientPublicKeyHash, 
 	Type & type, std::int64_t value, std::int64_t fee, const State state, std::string memo) {
 	State currentState = state == State::own ? State::sale : State::own;
@@ -123,7 +122,24 @@ bool Wallet::createTransactionSwitchState(Transaction & tx, int blockchainVersio
 	return true;
 }
 
-int64_t Wallet::getMyUTXOAmount(const Type type) const {
+bool Wallet::createTransactionPurchaseSale(Transaction & tx, int blockchainVersion, const std::uint8_t * recipientPublicKeyHash, 
+	Type & type, std::int64_t value, std::int64_t fee, std::string memo) {
+
+
+
+
+
+
+
+
+
+
+
+
+	return false;
+}
+
+int64_t Wallet::getMyUTXOAmount(const Type & type) const {
 	if (myUTXOTable.size() == 0)
 		return 0;
 
@@ -137,7 +153,7 @@ int64_t Wallet::getMyUTXOAmount(const Type type) const {
 	return sum;
 }
 
-int64_t Wallet::getMyUTXOAmount(const Type type, const State state) const {
+int64_t Wallet::getMyUTXOAmount(const Type & type, const State state) const {
 	if (myUTXOTable.size() == 0)
 		return 0;
 	
@@ -162,6 +178,14 @@ int64_t Wallet::getMyUTXOAmount(const Type type, const State state) const {
 //	myUTXOTable = _UTXOTable;
 //	sort(myUTXOTable.begin(), myUTXOTable.end());
 //}
+
+void Wallet::printUTXOTable(std::ostream & o) const {
+	o << "----- UTXO Table -----\n";
+	for (const UTXO & utxo : UTXOTable) {
+		utxo.print(o);
+		o << '\n';
+	}
+}
 
 void Wallet::printMyUTXOTable(std::ostream & o) const {
 	o << "----- My UTXO Table -----\n";

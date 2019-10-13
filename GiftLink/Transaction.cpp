@@ -9,8 +9,8 @@
 #include "Utility.h"
 using namespace std;
 
-ostream & operator<<(ostream & o, Type & type);
-ostream & operator<<(ostream & o, State & state);
+ostream & operator<<(ostream & o, const Type & type);
+ostream & operator<<(ostream & o, const State & state);
 
 void Type::print(ostream & o) const {
 	if (*this == Type())
@@ -29,6 +29,8 @@ Output::Output(const std::uint8_t * _recipientPublicKeyHash, std::int64_t _value
 void Output::print(ostream & o) const {
 	o << "Recipient Public Key Hash: " << recipientPublicKeyHash << '\n';
 	o << "Value: " << value << '\n';
+	o << "Type:  " << type << '\n';
+	o << "State: " << state << '\n';
 }
 
 
@@ -273,14 +275,14 @@ void Transaction::print(ostream & o) const {
 	}
 }
 
-ostream & operator<<(ostream & o, Type & type) {
+ostream & operator<<(ostream & o, const Type & type) {
 	if (type == Type())
 		return o << type.name;
 	else
 		return o << type.name << ", " << type.faceValue << ", " << type.marketValue << ", " << timeToString(type.expirataionDate);
 }
 
-ostream & operator<<(ostream& o, State & state) {
+ostream & operator<<(ostream& o, const State & state) {
 	switch (state) {
 	case State::own:
 		o << "OWN";
@@ -307,7 +309,7 @@ UTXO::UTXO(const std::uint8_t * _txHash, Output _output, int _outputIndex, std::
 }
 
 void UTXO::print(std::ostream & o) const {
-	o << "Unspent Transaction Hash: " << txHash << '\n';
+	o << "Unspent Transaction Hash:  " << txHash << '\n';
 	output.print(o);
 }
 
@@ -344,15 +346,13 @@ bool operator==(const Output & obj, const Output & obj2) {
 	if (obj.value != obj2.value)
 		return false;
 
-	if (obj.type == Type() && obj2.type == Type()) {
-		if (obj.state != State::own || obj2.state != State::own) {
-			return false;
-		}
-		return true;
-	}
-
 	if (obj.type != obj2.type)
 		return false;
+
+	if (obj.type == Type() && obj2.type == Type()) {
+		if (obj.state != State::own || obj2.state != State::own)
+			return false;
+	}
 
 	//if (state != obj.state)	find 함수에서 블록 생성 시 상태를 마음대로 설정할 수 있기 때문에
 	//	return false;
