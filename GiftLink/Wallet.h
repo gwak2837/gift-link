@@ -16,6 +16,7 @@ class Wallet {
 	std::uint8_t compressedPublicKey[SECP256R1_NUM_BYTES + 1];
 
 	const struct uECC_Curve_t * curve = uECC_secp256r1();
+	bool signOnTx(Transaction & tx);
 
 public:
 	std::vector<UTXO> UTXOTable;
@@ -30,8 +31,9 @@ public:
 	bool createTransactionSwitchState(Transaction & tx, int blockchainVersion, const std::uint8_t * recipientPublicKeyHash, Type & type,
 		std::int64_t value, std::int64_t fee, const State state, std::string memo = "");
 
-	bool createTransactionPurchaseSale(Transaction & tx, int blockchainVersion, const std::uint8_t * recipientPublicKeyHash, Type & type,
+	bool createTransactionPurchaseSale(Transaction & tx, int blockchainVersion, UTXO & saleSecurities,	
 		std::int64_t value, std::int64_t fee, std::string memo = "");
+
 
 	// getter method
 	inline const std::uint8_t * getPrivateKey() const { return privateKey; }

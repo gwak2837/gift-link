@@ -13,12 +13,12 @@
 #include "uECC.h"
 
 enum class TxType {
-	one, two, three, four
+	USE, SEND, STATE, PURCHASE 
 };
 
 
 enum class State {
-	own, sale, spent
+	OWN, SALE, SPENT
 };
 
 class Type {
@@ -26,10 +26,11 @@ public:
 	std::string name;
 	std::int64_t faceValue;
 	std::int64_t marketValue;
-	time_t expirataionDate;
+	time_t expirationDate;
+	std::uint8_t issuerSignature[SECP256R1_NUM_BYTES * 2];		//************************* 꼭 있어야 하나?
 
-	Type() : name("GiftLink Coin"), faceValue(0), marketValue(0), expirataionDate((time_t)pow(2, sizeof(time_t) * 8 - 1) - 1) {}					// GLC 생성 시
-	Type(std::string _n, std::int64_t _f, std::int64_t _m, time_t _e) : name(_n), faceValue(_f), marketValue(_m), expirataionDate(_e) {}	// 유가증권 이름, 액면가, 시장가, 유효기간 설정
+	Type();																											// GLC 생성 시
+	Type(std::string _n, std::int64_t _f, std::int64_t _m, time_t _e, const std::uint8_t * _issuerSignature);		// 유가증권 생성 시
 
 	void print(std::ostream & o) const;
 
@@ -38,6 +39,7 @@ public:
 	friend bool operator<(const Type &, const Type &);
 };
 
+//*************************** 유가증권/GLC에 따라 Output 종류를 2개로 나눌까?
 class Output {
 public:
 	std::uint8_t recipientPublicKeyHash[SHA256_DIGEST_VALUELEN];	// P2PKH. pubKeyHash(32 bytes)

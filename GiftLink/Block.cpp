@@ -39,7 +39,7 @@ bool Block::miningSuccess() const {
 }
 
 void Block::mining() {
-	int i = sizeof(version) + sizeof(previousBlockHash) + sizeof(merkleRoot) + sizeof(timestamp) + sizeof(bits);
+	const int i = sizeof(version) + sizeof(previousBlockHash) + sizeof(merkleRoot) + sizeof(timestamp) + sizeof(bits);
 
 MINING:
 	nonce = 0;
@@ -96,7 +96,6 @@ uint8_t * Block::createBlockHeader() const {
 	return blockHeader;
 }
 
-/* 보완점? */
 bool Block::isValid() const {
 	if (transactions.size() == 0) {						// 블록에 거래가 하나도 없으면
 		cout << "There is no transaction in " << height << "th block...\n";
@@ -143,7 +142,7 @@ bool Block::isValid() const {
 		
 		assert(coinbaseTx.outputs.size() > 0 && previousBlockCoinbaseTx.outputs.size() > 0);
 		//if (isMemoryEqual(coinbaseTx.outputs[0].recipientPublicKeyHash, previousBlockCoinbaseTx.outputs[0].recipientPublicKeyHash, sizeof(coinbaseTx.outputs[0].recipientPublicKeyHash)))		// 연속 2회 이상 동일 주소로 블록 생성 시
-		//	return false;
+		//	return false;																																											// 테스트를 위해 비활성화
 	}
 	
 	const uint8_t * _merkleRoot = createMerkleRoot();
@@ -183,18 +182,11 @@ void Block::initializeMerkleRoot() {
 }
 
 void Block::print(ostream & o) const {
-	o << "Block #" << height << '\n';
-	o << "Block Hash:  " << blockHash << '\n';
-	o << "Version:     " << version << '\n';
-	o << "Previous \nBlock Hash:  " << previousBlockHash << '\n';
-	o << "Merkle Hash: " << merkleRoot << '\n';
-	o << "Timestamp:   " << timeToString(timestamp) << '\n';
-	o << "Bits:        " << (int)bits << '\n';
-	o << "Nonce:       " << nonce << "\n\n";
+	printBlockHeader(o);
 
 	int j = 0;
 	for (const Transaction & tx : transactions) {
-		o << "Transaction #" << j << '\n';
+		o << "<-- Transaction #" << j << " -->\n";
 		tx.print(o);
 		j++;
 	}

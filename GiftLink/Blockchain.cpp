@@ -15,33 +15,43 @@ using namespace std;
 
 // Genesis block을 생성한다.
 Blockchain::Blockchain(string _name, const uint8_t * _recipientPublicKeyHash) : blockCount(0), name(_name), version(1) {
-	cout << "\nCreating a blockchain...\n";
+	cout << "Creating a blockchain...\n";
 
 	Block * _genesisBlock = new Block();
-	_genesisBlock->version = version;	// 현재 블록체인 version 입력
+	genesisBlock = _genesisBlock;
+	waitingBlock = _genesisBlock;
 
 	vector<Input> inputs;				
-	Input input;						// Coinbase input
-	inputs.push_back(input);
+	Input coinbaseInput;
+	inputs.push_back(coinbaseInput);
 
 	vector<Output> outputs;
-	Output output(_recipientPublicKeyHash, COINBASE_REWARD, Type(), State::own);	// Coinbase output
+	Output output(_recipientPublicKeyHash, COINBASE_REWARD, Type(), State::OWN);	// Coinbase output
 	outputs.push_back(output);
 
-	Transaction coinbaseTx(inputs, outputs, version, "GenesisBlock-CoinbaseTransaction");	// Coinbase Transaction
-	_genesisBlock->transactions.push_back(coinbaseTx);
-	memcpy(_genesisBlock->merkleRoot, coinbaseTx.txHash, SHA256_DIGEST_VALUELEN);
-	_genesisBlock->mining();			// Genesis block을 생성
-	
-	genesisBlock = _genesisBlock;		// Genesis block 설정
-	addBlock(_genesisBlock);			// Last block 설정
+	Transaction coinbaseTx(inputs, outputs, version, "GenesisBlock-CoinbaseTransaction");
 
-	cout << "The blockchain was created successfully!\n\n";
-
-	Block * _waitingBlock = new Block(lastBlock);
-	waitingBlock = _waitingBlock;
+	if (!addBlock(coinbaseTx))
+		cout << "There is an error when creating genesis block...\n";
 }
 
+// waiting block을 블록체인에 연결한다.
+bool Blockchain::addBlock(Transaction & coinbaseTx) {
+	waitingBlock->version = version;		// 현재 blockchain version 입력
+	waitingBlock->transactions.insert(waitingBlock->transactions.begin(), coinbaseTx);
+	waitingBlock->initializeMerkleRoot();	// Transaction hash로 Merkletree를 만들어 waiting block의 merkleroot 계산
+	waitingBlock->mining();					// waiting block을 채굴
+	lastBlock = waitingBlock;
+	blockCount++;
+	waitingBlock->height = blockCount - 1;
+	waitingBlock->isMainChain = true;
+
+	Block * newWaitingBlock = new Block(lastBlock);
+	waitingBlock = newWaitingBlock;
+
+	cout << "Block was produced successfully!\n";
+	return true;
+}
 
 /* transaction pool에 transaction을 추가한다. 
 참조하는 Output이 없으면 일단 고아 거래 풀에 담김. */
@@ -72,33 +82,31 @@ Coinbase Transaction 생성 과정
 2. Output 설정
 3. Transaction 데이터 해싱 */
 bool Blockchain::produceBlock(const uint8_t * recipientPublicKeyHash, int txCount, State feeState) {
-	//if (txPool.size() == 0) {
-	//	cout << "There aren't enough transactions in the memory pool to produce block...\n";
-	//	return false;
-	//}
+	if (txPool.size() == 0)
+		cout << "There aren't enough transactions in the transaction pool to produce block...\n";
+
 	assert(waitingBlock != NULL);
 
 	if (txCount > MAX_TRANSACTION_COUNT)
 		txCount = MAX_TRANSACTION_COUNT;
 
 	auto iter = txPool.begin();
-	for (size_t count = 0; count < MAX_TRANSACTION_COUNT - 1 && iter != txPool.end(); count++) {		//*******************waitingBlock까지 검사
+	for (size_t count = 0; count < MAX_TRANSACTION_COUNT - 1 && iter != txPool.end(); count++) {
 		if (isValid(txPool.front(), 0))
 			waitingBlock->transactions.push_back(*iter);
 		else
-			cout << "issueSecurities : Invalid Transaction in Tx Pool...\n";
+			cout << "produceBlock : Invalid Transaction in Tx Pool...\n";
 
 		iter = txPool.erase(iter);
 	}
-
-	waitingBlock->version = version;		// 현재 blockchain version 입력
 
 	vector<Input> inputs;
 	Input coinbaseInput;
 	inputs.push_back(coinbaseInput);
 
+
 	vector<Output> outputs;
-	Output blockProductionReward(recipientPublicKeyHash, COINBASE_REWARD, Type(), State::own);
+	Output blockProductionReward(recipientPublicKeyHash, COINBASE_REWARD, Type(), State::OWN);
 	outputs.push_back(blockProductionReward);
 
 	map<Type, int64_t> mapTypeValue;
@@ -114,34 +122,28 @@ bool Blockchain::produceBlock(const uint8_t * recipientPublicKeyHash, int txCoun
 	}
 
 	Transaction coinbaseTx(inputs, outputs, version, "Coinbase Transaction");
+	if (!addBlock(coinbaseTx))
+		return false;
 
-	waitingBlock->transactions.insert(waitingBlock->transactions.begin(), coinbaseTx);
-	waitingBlock->initializeMerkleRoot();	// Transaction hash로 Merkletree를 만들어 waiting block의 merkleroot 계산
-	waitingBlock->mining();					// waiting block을 채굴
-	addBlock(waitingBlock);					// waiting block을 블록체인에 추가
-	waitingBlock->height = blockCount - 1;
-	waitingBlock->isMainChain = true;
-	cout << "Block was produced successfully!\n";
-
-	Block * newWaitingBlock = new Block(lastBlock);
-	waitingBlock = newWaitingBlock;
-	
 	return true;
 }
 
-//************** 블록 생성 함수랑 합치기
-bool Blockchain::issueSecurities(const uint8_t * recipientPublicKeyHash, int txCount, Type & type, int issueAmount, const State securitiesState, const State feeState) {
-	//if (txPool.size() == 0) {
-	//	cout << "There aren't enough transactions in the memory pool to produce block...\n";
-	//	return false;
-	//}
+bool Blockchain::issueSecurities(const uint8_t * recipientPublicKeyHash, int txCount, Type & type, int64_t issueAmount, const State securitiesState, const State feeState) {
+	if (txPool.size() == 0)
+		cout << "There aren't enough transactions in the transaction pool to produce block...\n";
+
 	assert(waitingBlock != NULL);
 
 	if (txCount > MAX_TRANSACTION_COUNT)
 		txCount = MAX_TRANSACTION_COUNT;
 
-	if (issueAmount > COINBASE_REWARD * 100)
-		issueAmount = COINBASE_REWARD * 100;
+	if (issueAmount > getMaxIssueAmount(type))
+		issueAmount = getMaxIssueAmount(type);
+
+	if (issueAmount == 0) {
+		cout << "Couldn't issue securities...\n";
+		return false;
+	}
 
 	auto iter = txPool.begin();
 	for (size_t count = 0; count < txCount - 1 && iter != txPool.end(); count++) {
@@ -152,8 +154,6 @@ bool Blockchain::issueSecurities(const uint8_t * recipientPublicKeyHash, int txC
 
 		iter = txPool.erase(iter);
 	}
-
-	waitingBlock->version = version;		// 현재 blockchain version 입력
 
 	vector<Input> inputs;
 	Input coinbaseInput;
@@ -176,17 +176,8 @@ bool Blockchain::issueSecurities(const uint8_t * recipientPublicKeyHash, int txC
 	}
 
 	Transaction coinbaseTx(inputs, outputs, version, "Coinbase Transaction");
-
-	waitingBlock->transactions.insert(waitingBlock->transactions.begin(), coinbaseTx);
-	waitingBlock->initializeMerkleRoot();	// Transaction hash로 Merkletree를 만들어 waiting block의 merkleroot 계산
-	waitingBlock->mining();					// waiting block을 채굴
-	addBlock(waitingBlock);					// waiting block을 블록체인에 추가
-	waitingBlock->height = blockCount - 1;
-	waitingBlock->isMainChain = true;
-	cout << "Block was produced successfully!\n";
-
-	Block * newWaitingBlock = new Block(lastBlock);
-	waitingBlock = newWaitingBlock;
+	if (!addBlock(coinbaseTx))
+		return false;
 
 	return true;
 }
@@ -238,15 +229,53 @@ bool Blockchain::calculateTotalTransactionFee(const Transaction & tx, map<Type, 
 	return true;
 }
 
+bool Blockchain::getTxType(TxType & txType, const Transaction & tx) const {
+	
+
+
+
+
+
+
+
+
+	for (const Input & input : tx.inputs) {
+		Transaction previousTx;
+		if (!findPreviousTx(previousTx, input.previousTxHash, input.blockHeight))		// 이전 Output이 없으면
+			return false;
+
+
+	}
+
+	//for (const Output & output : tx.outputs) {
+	//	if(output.)
+
+	//}
+
+
+
+
+	//if (previousTx.outputs[input.outputIndex].state == State::SALE) {
+	//	txType = TxType::PURCHASE;
+	//}
+	//else if (previousTx.outputs[input.outputIndex].state == State::OWN)
+
+
+
+
+
+	return false;
+}
+
 bool Blockchain::isValidCoinbase(const Block * block, const Transaction & coinbaseTx, CoinbaseType coinbaseType) const {
 	if (!coinbaseTx.isCoinbase())
 		return false;
 
 	if (coinbaseTx.outputs[0].type != Type()) {															// 유가증권 발행 시
-		if (coinbaseTx.outputs[0].value > COINBASE_REWARD * 100)											// 유가증권 최대 발행량 <= 블록 생성 보상 * 100
+		if (coinbaseTx.outputs[0].value > getMaxIssueAmount(coinbaseTx.outputs[0].type))					// 유가증권 최대 발행량 <= 블록 생성 보상 * 100
 			return false;
 	}
-	else if (coinbaseTx.outputs[0].type == Type() && coinbaseTx.outputs[0].state == State::own) {		// 블록 생성 시
+	else if (coinbaseTx.outputs[0].type == Type() && coinbaseTx.outputs[0].state == State::OWN) {		// 블록 생성 시
 		if (coinbaseTx.outputs[0].value != COINBASE_REWARD)													// 블록 생성 보상
 			return false;
 	}
@@ -278,7 +307,7 @@ bool Blockchain::isValidCoinbase(const Block * block, const Transaction & coinba
 
 	for (const auto & kv : mapTypeValue) {																// 수수료 보상 검증
 		if (kv.second > 0) {
-			Output output(blockProducerPublicKeyHash, kv.second, kv.first, State::own);
+			Output output(blockProducerPublicKeyHash, kv.second, kv.first, State::OWN);
 			auto iter = find(copyCoinbaseTx.outputs.begin(), copyCoinbaseTx.outputs.end(), output);		// state까지 같을 필요는 없음. operator==에 정의됨
 			if ((iter != copyCoinbaseTx.outputs.end())) {													// 수수료 보상 있으면
 				copyCoinbaseTx.outputs.erase(iter);
@@ -316,9 +345,6 @@ bool Blockchain::isValid(const Transaction & tx, int previousOutputReferenceCoun
 	if (tx.isCoinbase())	// coinbase는 검사하지 않는다.
 		return false;
 
-	if (!tx.isValid())		// 거래 서명 유효성(txHash + 공개키 + 서명)
-		return false;
-
 	Transaction testTx = tx;			// txHash 유효성	
 	size_t inputIndex = 0;
 
@@ -330,12 +356,14 @@ bool Blockchain::isValid(const Transaction & tx, int previousOutputReferenceCoun
 		if (!isTxOutputReferenceCount(previousTx, input.outputIndex, previousOutputReferenceCount))	// 이전 Output 참조 횟수 검사
 			return false;
 
-		if (previousTx.outputs[input.outputIndex].state == State::spent)				// 사용된 유가증권을 참조하고 있으면
+		if (previousTx.outputs[input.outputIndex].state == State::SPENT)				// 사용된 유가증권을 참조하고 있으면
 			return false;
 
 		if (previousTx.timestamp >= tx.timestamp)										// 시간 간격
 			return false;
 
+		
+		
 		const Output & previousOutput = previousTx.outputs[input.outputIndex];
 		memset(testTx.inputs[inputIndex].signature, 0, sizeof(testTx.inputs[inputIndex].signature));
 		memcpy(testTx.inputs[inputIndex].signature, previousOutput.recipientPublicKeyHash, sizeof(previousOutput.recipientPublicKeyHash));
@@ -347,6 +375,42 @@ bool Blockchain::isValid(const Transaction & tx, int previousOutputReferenceCoun
 
 		inputIndex++;
 	}
+
+
+
+	//TxType txType;
+	//if (!getTxType(txType, tx))
+	//	return false;
+
+	//if (txType != TxType::PURCHASE) {	// 거래 서명 유효성(txHash + 공개키 + 서명)
+	//	if (!tx.isValid())
+	//		return false;
+	//}
+	//else {
+	//	
+	//}
+
+
+
+	
+
+
+	//switch (txType)
+	//{
+	//case TxType::USE:
+	//	break;
+	//case TxType::SEND:
+	//	break;
+	//case TxType::SALE:
+	//	break;
+	//case TxType::PURCHASE:
+	//	break;
+	//default:
+	//	break;
+	//}
+
+
+
 
 	const uint8_t * testTxData = testTx.createTxData();
 	SHA256_Encrpyt(testTxData, (unsigned int)testTx.getTxDataSize(), testTx.txHash);
@@ -608,150 +672,3 @@ void Blockchain::print(ostream & o) const {
 	cout << "\nPrinting was completed!\n";
 }
 
-
-/*
-void Blockchain::printAllTransaction(ostream& o) const {
-	if (lastBlock == NULL) {
-		cout << "\nThere is no block in the blockchain...\n\n";
-		return;
-	}
-
-	const Block * presentBlock = lastBlock;
-	for (size_t i = 0; i < blockCount; i++) {
-		if (presentBlock->transactionsAreValid() && presentBlock->isValid()) {		// merkleRoot와 blockHash 유효성 검사
-			size_t txSize = presentBlock->transactions.size();
-			for (size_t j = 0; j < txSize; j++) {
-				o << "\nTransaction #" << j + 1 << '\n';
-				presentBlock->transactions[j]->print(o);
-			}
-			o << '\n';
-			presentBlock = presentBlock->previousBlock;
-		} else {
-			cout << "Digital forgery had occured in " << presentBlock->height << "th block...";
-			break;
-		}
-	}
-}
-
-
-
-
-
-vector<UTXO *> Blockchain::getIssuableGiftcardTable(const BYTE * privateKey) const {
-	if (lastBlock == NULL) {
-		cout << "\nThere is no block in the blockchain...\n";
-		return vector<UTXO *>();
-	}
-
-	const Block * presentBlock = lastBlock;
-	vector<UTXO *> issuableGiftcardList;
-	for (uint64_t i = 0; i < blockCount; i++) {
-		int j = 0;
-		for (Transaction * tx : presentBlock->transactions) {
-			int k = 0;
-			for (const Output * output : tx->getOutputs()) {
-				if (output->getType() == Type::TOKEN) {
-					Input input;
-					input.generateSignature(privateKey);
-					if (input.verifySignature(output->getPublicSignature(), output->getPubSigLength())) {
-						UTXO * utxo = new UTXO(tx->getTransactionHash(), i, j, k, output->getValue(), output->getType(), output->getTypeIndex());
-						issuableGiftcardList.push_back(utxo);
-					}
-				}
-				k++;
-			}
-			j++;
-		}
-		presentBlock = presentBlock->previousBlock;
-	}
-
-	return issuableGiftcardList;
-}
-
-*/
-///* 해당 tx의 모든 input이 참조하는 Output이 1번 참조됐는지(사용됐는지)
-//0번 참조된 경우 Unspent Transaction Output(UTXO)이기 때문에 false 반환
-//2번 이상 참조된 경우 이중지불에 해당하기 때문에 false 반환 
-//참조하는 이전 Tx가 없는 경우 false 반환*/
-//bool Blockchain::doesEveryInputReferToSTXO(const Transaction & tx) const {
-//	if (tx.isCoinbase()) {
-//		if (tx.outputs[0].value != COINBASE_REWARD)
-//			return false;
-//
-//		if (tx.outputs[0].type != Type())
-//			return false;
-//
-//		return true;
-//	}
-//
-//	if (lastBlock == NULL) {
-//		cout << "\nThere is no block in the blockchain...\n";
-//		return false;
-//	}
-//
-//	for (const Input & input : tx.inputs) {
-//		Transaction previousTx;
-//		if (!findPreviousTx(previousTx, input.blockHeight, input.previousTxHash))	// 참조하는 Output이 없으면 false 반환.
-//			return false;
-//
-//		int referencedCount = 0;
-//		const Block * presentBlock = lastBlock;
-//
-//		for (size_t i = 0; i < blockCount; i++, presentBlock = presentBlock->previousBlock) {
-//			for (const Transaction & _tx : presentBlock->transactions) {
-//				for (const Input & _input : _tx.inputs) {
-//					if (isMemoryEqual(_input.previousTxHash, previousTx.txHash, sizeof(previousTx.txHash)) && _input.outputIndex == input.outputIndex) {
-//						referencedCount++;
-//						if (referencedCount > 1) {		// 1번을 초과하여 참조되면 false 반환
-//							cout << "\nPrevious transaction output is referenced twice or more...\n";
-//							cout << "Previous transaction in " << input.blockHeight << "th block\n";
-//							cout << "Previous transaction hash : " << input.previousTxHash << '\n';
-//							cout << "Previous transaction output index : " << input.outputIndex << "\n\n";
-//							return false;
-//						}
-//					}
-//				}
-//			}
-//		}
-//
-//		if (referencedCount == 0) {
-//			cout << "\nPrevious transaction output is not referenced...\n";
-//			cout << "Previous transaction in " << input.blockHeight << "th block\n";
-//			cout << "Previous transaction hash : " << input.previousTxHash << '\n';
-//			cout << "Previous transaction output index : " << input.outputIndex << "\n\n";
-//			return false;
-//		}
-//	}
-//
-//	return true;
-//}
-//
-///* 해당 tx의 모든 input이 참조하는 Output이 0번 참조됐는지(사용되지 않았는지)
-//1번 이상 참조되면 사용된 경우(2번 이상 참조되면 이중지불)에 해당하므로 false 반환 */
-//bool Blockchain::doesEveryInputReferToUTXO(const Transaction & tx) const {
-//	if (tx.isCoinbase()) {
-//		if (tx.outputs[0].value != COINBASE_REWARD)
-//			return false;
-//
-//		if (tx.outputs[0].type != Type())
-//			return false;
-//
-//		return true;
-//	}
-//	
-//	if (lastBlock == NULL) {
-//		cout << "\nThere is no block in the blockchain...\n";
-//		return false;
-//	}
-//
-//	for (const Input & input : tx.inputs) {
-//		Transaction previousTx;
-//		if (!findPreviousTx(previousTx, input.blockHeight, input.previousTxHash)) 	// 참조하는 Output이 없으면 false 반환.
-//			return false;
-//
-//		if (!isUTXO(previousTx, input.outputIndex))
-//			return false;
-//	}
-//
-//	return true;
-//}

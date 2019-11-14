@@ -9,14 +9,27 @@
 #include "Utility.h"
 using namespace std;
 
-ostream & operator<<(ostream & o, const Type & type);
-ostream & operator<<(ostream & o, const State & state);
+
+Type::Type() : name("GiftLink Coin"), faceValue(0), marketValue(0), expirationDate((time_t)pow(2, sizeof(time_t) * 8 - 1) - 1) {
+	memset(issuerSignature, 0, sizeof(issuerSignature));
+}
+
+Type::Type(std::string _n, std::int64_t _f, std::int64_t _m, time_t _e, const std::uint8_t * issuerPrivateKey)
+	: name(_n), faceValue(_f), marketValue(_m), expirationDate(_e) {		// 유가증권 이름, 액면가, 시장가, 유효기간 설정
+
+	//std::uint8_t _issuerSignature[SECP256R1_NUM_BYTES * 2];
+
+	//********이름 + 액면가 + 유효기간으로 해시 만들고
+	//********해시 + 개인키로 디지털 서명 만들고
+
+	//memcpy(issuerSignature, _issuerSignature, sizeof(issuerSignature));
+}
 
 void Type::print(ostream & o) const {
 	if (*this == Type())
 		o << this->name;
 	else
-		o << this->name << ", " << this->faceValue << ", " << this->marketValue << ", " << timeToString(this->expirataionDate);
+		o << this->name << ", " << this->faceValue << ", " << this->marketValue << ", " << timeToString(this->expirationDate);
 	o << '\n';
 }
 
@@ -168,8 +181,11 @@ uint8_t * Transaction::createTxData() const {
 		memcpy(txData + i, &output.type.marketValue, sizeof(output.type.marketValue));
 		i += sizeof(output.type.marketValue);
 
-		memcpy(txData + i, &output.type.expirataionDate, sizeof(output.type.expirataionDate));
-		i += sizeof(output.type.expirataionDate);
+		memcpy(txData + i, &output.type.expirationDate, sizeof(output.type.expirationDate));
+		i += sizeof(output.type.expirationDate);
+
+		memcpy(txData + i, output.type.issuerSignature, sizeof(output.type.issuerSignature));
+		i += sizeof(output.type.issuerSignature);
 
 		memcpy(txData + i, &output.state, sizeof(output.state));
 		i += sizeof(output.state);
@@ -200,7 +216,7 @@ size_t Transaction::getTxDataSize() const {
 
 	for (const Output output : outputs) {
 		txDataSize += sizeof(output.value) + output.type.name.length() + sizeof(output.type.faceValue) + sizeof(output.type.marketValue)
-			+ sizeof(output.type.expirataionDate) + sizeof(output.state) + sizeof(output.recipientPublicKeyHash);
+			+ sizeof(output.type.expirationDate) + sizeof(output.type.issuerSignature) + sizeof(output.state) + sizeof(output.recipientPublicKeyHash);
 	}
 
 	return txDataSize;
@@ -255,7 +271,7 @@ void Transaction::print(ostream & o) const {
 	o << "Timestamp:        " << timeToString(timestamp) << '\n';
 	o << "Memo:             " << memo << "\n\n";
 
-	o << "-Transaction Input-\n";
+	o << "Transaction Input\n";
 	for (Input input : inputs) {
 		o << "Sender Signature:         ";
 		printInHex(o, input.signature, sizeof(input.signature));
@@ -265,7 +281,7 @@ void Transaction::print(ostream & o) const {
 		o << "Previous Tx Output Index: " << input.outputIndex << "\n\n";
 	}
 
-	o << "-Transaction Output-\n";
+	o << "Transaction Output\n";
 	for (Output output : outputs) {
 		o << "Recipient Public Key Hash: " << output.recipientPublicKeyHash << '\n';
 		o << "Type:                      ";
@@ -273,32 +289,6 @@ void Transaction::print(ostream & o) const {
 		o << "State:                     " << output.state << '\n';
 		o << "Value:                     " << output.value << "\n\n";
 	}
-}
-
-ostream & operator<<(ostream & o, const Type & type) {
-	if (type == Type())
-		return o << type.name;
-	else
-		return o << type.name << ", " << type.faceValue << ", " << type.marketValue << ", " << timeToString(type.expirataionDate);
-}
-
-ostream & operator<<(ostream& o, const State & state) {
-	switch (state) {
-	case State::own:
-		o << "OWN";
-		break;
-	case State::sale:
-		o << "SALE";
-		break;
-	case State::spent:
-		o << "SPENT";
-		break;
-	default:
-		o << "UNDEFINED...\n";
-		break;
-	}
-
-	return o;
 }
 
 
@@ -322,10 +312,13 @@ bool operator==(const Type & obj, const Type &obj2) {
 	if (obj.faceValue != obj2.faceValue)
 		return false;
 
-	if (obj.marketValue != obj2.marketValue)
+	//if (obj.marketValue != obj2.marketValue)
+	//	return false;
+
+	if (obj.expirationDate != obj2.expirationDate)
 		return false;
 
-	if (obj.expirataionDate != obj2.expirataionDate)
+	if (!isMemoryEqual(obj.issuerSignature, obj2.issuerSignature, sizeof(obj.issuerSignature)))
 		return false;
 
 	return true;
@@ -336,7 +329,7 @@ bool operator!=(const Type & obj, const Type &obj2) {
 }
 
 bool operator<(const Type & type, const Type & type2) {
-	return type.expirataionDate < type2.expirataionDate;
+	return type.expirationDate < type2.expirationDate;
 }
 
 bool operator==(const Output & obj, const Output & obj2) {
@@ -350,7 +343,7 @@ bool operator==(const Output & obj, const Output & obj2) {
 		return false;
 
 	if (obj.type == Type() && obj2.type == Type()) {
-		if (obj.state != State::own || obj2.state != State::own)
+		if (obj.state != State::OWN || obj2.state != State::OWN)
 			return false;
 	}
 

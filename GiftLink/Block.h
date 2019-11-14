@@ -28,16 +28,14 @@ class Block {
 	std::vector<Transaction> transactions;					// Transaction 내역
 
 	/* Block Information */
-	std::uint8_t blockHash[SHA256_DIGEST_VALUELEN];			// Block의 ID
+	std::uint8_t blockHash[SHA256_DIGEST_VALUELEN];			// Block 해시값
 	std::uint64_t height;									// Block의 높이. 해싱 안 함.
-	bool isMainChain;										// main chain 상 블록인지. 해싱 안 함.
+	bool isMainChain;										// main chain 블록인지. 해싱 안 함.
 	const Block * previousBlock;							// 이전 블록의 메모리 주소. 해싱 안 함.
-	const Block * nextBlock;			/* 개발 중 */
+	const Block * nextBlock;								// 다음 블록의 메모리 주소. 해싱 안 함.
 
 
-
-	// Block class에서 사용하는 메소드
-	std::uint8_t * createBlockHeader() const;				// <- test 필요
+	std::uint8_t * createBlockHeader() const;
 	const std::uint8_t * createMerkleRoot() const;
 	bool miningSuccess() const;
 
@@ -47,7 +45,7 @@ class Block {
 
 	bool isValid() const;									// 블록 유효성 검사
 	inline bool isFull() const;
-	void mining();							// <- test 필요
+	void mining();
 	void initializeMerkleRoot();
 	void print(std::ostream & o) const;
 	void printBlockHeader(std::ostream & o) const;

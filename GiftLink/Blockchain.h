@@ -28,7 +28,12 @@ class Blockchain {
 	size_t blockCount;							// 블록의 총 개수
 	std::string name;							// 블록체인 이름
 
-	inline void addBlock(Block * _block);
+	bool addBlock(Transaction & coinbaseTx);
+	bool findPreviousTx(Transaction & previousTx, const std::uint8_t * previousTxHash, std::uint64_t blockHeight) const;
+	bool isTxOutputReferenceCount(const Transaction & tx, size_t txOutputIndex, std::uint64_t referenceCount) const;
+	bool calculateTotalTransactionFee(const Block * block, std::map<Type, int64_t> & mapTypeValue) const;
+	bool calculateTotalTransactionFee(const Transaction & tx, std::map<Type, int64_t> & mapTypeValue) const;
+	bool getTxType(TxType & txType, const Transaction & tx) const;
 
 public:
 	int version;								// 블록체인 현재 버전
@@ -36,11 +41,8 @@ public:
 	Blockchain(std::string _name, const std::uint8_t * _recipientPublicKeyHash);
 
 	bool addTransactionToPool(Transaction & _tx);
-	bool produceBlock(const std::uint8_t * recipientPublicKeyHash, int txCount, const State feeState = State::own);
-	bool issueSecurities(const std::uint8_t * recipientPublicKeyHash, int txCount, Type & type, int issueAmount, const State securitiesState, const State feeState = State::own);
-
-	bool findPreviousTx(Transaction & previousTx, const std::uint8_t * previousTxHash, std::uint64_t blockHeight) const;
-	bool isTxOutputReferenceCount(const Transaction & tx, size_t txOutputIndex, std::uint64_t referenceCount) const;
+	bool produceBlock(const std::uint8_t * recipientPublicKeyHash, int txCount, const State feeState = State::OWN);
+	bool issueSecurities(const std::uint8_t * recipientPublicKeyHash, int txCount, Type & type, int64_t issueAmount, const State securitiesState, const State feeState = State::OWN);
 
 	bool findUTXOTable(std::vector<UTXO> & UTXOTable) const;
 	bool findUTXOTable(std::vector<UTXO> & UTXOTable, const State state) const;
@@ -49,14 +51,11 @@ public:
 
 	bool getBlockchain();								// -> 개발 중	// isValid와 비슷
 	bool setHeightAndMainChain();						// -> 개발 중
-	bool calculateTotalTransactionFee(const Block * block, std::map<Type, int64_t> & mapTypeValue) const;
-	bool calculateTotalTransactionFee(const Transaction & tx, std::map<Type, int64_t> & mapTypeValue) const;
 
 	bool isValidCoinbase(const Block * block, const Transaction & coinbaseTx, CoinbaseType coinbaseType) const;
 	bool isValid(const Transaction & tx, int previousOutputReferenceCount) const;	// 블록체인 단위 거래 유효성 검사
 	bool isValid() const;															// 블록체인 유효성 검사
 	bool isAdministratorAddress(const std::uint8_t * recipientPublicKeyHash) const;
-
 	
 	// getter method
 	std::string getFileName() const;
@@ -64,6 +63,7 @@ public:
 	inline const Block * getLastBlock() const { return lastBlock; }
 	inline size_t getBlockCount() const { return blockCount; }
 	inline std::string getName() const { return name; }
+	inline std::int64_t getMaxIssueAmount(const Type & type) const { return COINBASE_REWARD * 100 / type.faceValue; }
 
 	//for debug
 	void print(std::ostream & o) const;
@@ -75,14 +75,8 @@ public:
 
 	// tx 내용 검색 메소드								// -> 개발 중
 
-
 };
 
-// waiting block을 블록체인에 연결한다.
-inline void Blockchain::addBlock(Block * _block) {
-	lastBlock = _block;
-	blockCount++;
-}
 
 /* findPreviousTx()의 반환형이 참조자인 이유:
 원래 있던 Tx의 위치를 반환하니까 */

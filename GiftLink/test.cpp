@@ -6,6 +6,10 @@
 #include <queue>
 #include <string>
 #include <algorithm>
+#include <future>
+#include <thread>
+#include <boost/asio.hpp>
+#include <boost/array.hpp>
 #include "Blockchain.h"
 using namespace std;
 
@@ -32,22 +36,20 @@ int main()
 	Wallet recipient;
 	cout << "Test recipient wallet was created\n\n";
 
-	const uint8_t privateKey[SHA256_DIGEST_VALUELEN] = { 0x67, 0xd2, 0x26, 0x4b, 0x25, 0xbe, 0xd8, 0x25, 0xd0, 0x96, 0x42, 0x1b,
+	const uint8_t administratorPrivateKey[SHA256_DIGEST_VALUELEN] = { 0x67, 0xd2, 0x26, 0x4b, 0x25, 0xbe, 0xd8, 0x25, 0xd0, 0x96, 0x42, 0x1b,
 		 0x52, 0x13, 0x0d, 0x26, 0x2c, 0x26, 0x41, 0xa0, 0x7f, 0x06, 0xb0, 0xff, 0x33, 0x75, 0x9f, 0x06, 0x89, 0x96, 0xd2, 0x1a };
-	Wallet w(privateKey);
+	Wallet w(administratorPrivateKey);
 	cout << "My wallet was created\n\n";
 
 	Blockchain bc("GiftLink Blockchain", w.getPublicKeyHash());
-	cout << bc.getName() << " was created\n\n";
+	cout << '\n' << bc.getName() << " was created\n\n";
 
 	vector<UTXO> myUTXOTable;		// 참조되지 않은 내 소유의 UTXO
 	vector<UTXO> UTXOTable;			// 참조되지 않은 모든 UTXO
 
-	//err = getBroadcastedTransaction(tx)
-	//if (bc.addTransactionToPool(tx))
-	//	cout << "Transaction was added to Tx Pool!\n";
-	//else
-	//	cout << "Adding Tx to Tx Pool failed...\n";
+
+
+
 
 HOME:
 	{
@@ -58,7 +60,7 @@ HOME:
 		w.printMyUTXOTable(cout);
 
 		string input;
-		cout << "0.Home    1.Issue    2.State Transition    3.Buy    4.Use    5.Send    6.Produce    7.Infomation    \n";
+		cout << "0.Home    1.Issue    2.Sell    3.Buy    4.Use    5.Send    6.Produce    7.Blockchain Infomation    \n";
 		cin >> input;
 
 		if (!is_number(input)) {
@@ -75,9 +77,9 @@ HOME:
 		case 1:
 			goto ISSUE;
 		case 2:
-			goto STATE_TRANSITION;
+			goto SELL;
 		case 3:
-			//goto BUY;
+			goto BUY;
 		case 4:
 			goto USE;
 		case 5:
@@ -98,35 +100,67 @@ ISSUE: // 유가증권 발행
 		system("cls");
 
 		// 사용자로부터 입력받음
-		Type type("GiftCard LoveShinak", 10000, 9000, time(NULL) + 8640000);
+		cout << "GiftCard Name : ";
+		string name;
+		cin >> name;
+
+		cout << "Face Value : ";
+		int64_t faceValue;
+		cin >> faceValue;
+
+		cout << "Market Value : ";
+		int64_t marketValue;
+		cin >> marketValue;
+
+		cout << "Expiration Date : ";
+		time_t expirationDate;
+		cin >> expirationDate;
+
+
+		// 자동 입력
+		Type type(name, faceValue, marketValue, time(NULL) + expirationDate, w.getPrivateKey());
 		int txCount = 1;
-		int issueAmount = COINBASE_REWARD * 100;
-		State securitiesState = State::own;
-		State feeState = State::own;
+		int64_t issueAmount = bc.getMaxIssueAmount(type);
+		State securitiesState = State::OWN;
+		State feeState = State::OWN;
 
 		// inputPassword	// 비밀번호 확인
+
+		
+		//packaged_task<bool(const uint8_t *, int, Type &, int64_t, const State, const State)> task(bc.issueSecurities);
+
+		//future<bool> f = task.get_future();
+
+		//thread threadIssueSecurities(move(task), w.getPublicKeyHash(), txCount, ref(type), issueAmount, securitiesState, feeState);
+
+		//if(f.get())
+		//	cout << "Security was issued!\n";
+		//else
+		//	cout << "Issuing security failed...\n";
+
 
 		if (bc.issueSecurities(w.getPublicKeyHash(), txCount, type, issueAmount, securitiesState, feeState))
 			cout << "Security was issued!\n";
 		else
 			cout << "Issuing security failed...\n";
-
+			
 		// broadcastBlockchain(bc);
 
 		goto HOME;
 	}
 
 
-STATE_TRANSITION: // 유가증권 상태 전환(소유<->판매)
+SELL: // 유가증권 상태 전환(소유<->판매)
 	{
 		system("pause");
 		system("cls");
 
 		//err = getBroadcastedBlockchain(bc);
+
 		bc.findMyUTXOTable(myUTXOTable, w.getPublicKeyHash());
 		vector<UTXO> mySecuritiesUTXOTable;
 		for (const UTXO utxo : myUTXOTable) {
-			if (utxo.output.type != Type() && (utxo.output.state == State::own || utxo.output.state == State::sale))
+			if (utxo.output.type != Type() && (utxo.output.state == State::OWN || utxo.output.state == State::SALE))
 				mySecuritiesUTXOTable.push_back(utxo);
 		}
 
@@ -138,17 +172,26 @@ STATE_TRANSITION: // 유가증권 상태 전환(소유<->판매)
 			goto HOME;
 		}
 
-		// 사용자로부터 입력받음
-		size_t n = 0;																			// 선택한 유가증권 번호
-		int64_t value = 10;																		// 소유한 유가증권 중 몇 개를 판매 중으로 전환할지 사용자로부터 입력받음
-		int64_t fee = 1;																		// 사용자로부터 입력받거나 추천값 적용
+		// 사용자 직접 입력
+		cout << "Select : ";
+		size_t n;											// 상태를 전환할 유가증권 번호
+		cin >> n;
+
+		cout << "Value : ";
+		int64_t value;										// 소유한 유가증권 중 몇 개를 판매 중으로 전환할지 사용자로부터 입력받음
+		cin >> value;
+
+		cout << "Transaction Fee : ";
+		int64_t fee;										// 사용자로부터 입력받거나 추천값 적용
+		cin >> fee;
+
 
 		// 코드 스캔
 		const uint8_t * ownerPublicKeyHash = w.getPublicKeyHash();								// (자신 또는 받는 사람) 코드 스캔
 
 		// 자동 입력
 		Type type = w.myUTXOTable[n].output.type;												// 사용자 소유의 유가증권
-		State state = w.myUTXOTable[n].output.state == State::sale ? State::own : State::sale;	// 선택한 유가증권 번호로 판단
+		State state = w.myUTXOTable[n].output.state == State::SALE ? State::OWN : State::SALE;	// 선택한 유가증권 번호로 판단
 
 		// inputPassword	// 비밀번호 확인
 
@@ -169,48 +212,76 @@ STATE_TRANSITION: // 유가증권 상태 전환(소유<->판매)
 		goto HOME;
 	}
 
-	/*
+	//**************************************유가증권 판매 현황 검사 필요 : '유가증권 전체 판매량 < 유가증권 발행량'이어야 구매 가능
+	//**************************************구매할 유가증권은 자기 꺼는 제외하고 
 BUY: // 유가증권 구매
 	{
 		system("pause");
 		system("cls");
 
 		//err = getBroadcastedBlockchain(bc);
-		bc.findUTXOTable(UTXOTable, State::sale);												
+
+		bc.findUTXOTable(UTXOTable, State::SALE);
 		vector<UTXO> saleSecuritiesTable;
 		for (const UTXO utxo : UTXOTable) {
-			if (utxo.output.type.expirataionDate > time(NULL) && utxo.output.type != Type())	// 유가증권 유효기간 체크
+			if (utxo.output.type.expirationDate > time(NULL) && utxo.output.type != Type())	// 유가증권 유효기간 체크
 				saleSecuritiesTable.push_back(utxo);
 		}
 
+		bc.findMyUTXOTable(myUTXOTable, w.getPublicKeyHash());
+		vector<UTXO> myGLCTable;
+		for (const UTXO utxo : myUTXOTable) {
+			if (utxo.output.type == Type() && utxo.output.state == State::OWN)					// 내 소유의 GLC
+				myGLCTable.push_back(utxo);
+		}
+
 		w.UTXOTable = saleSecuritiesTable;
+		w.myUTXOTable = myGLCTable;
 		w.printUTXOTable(cout);
+		w.printMyUTXOTable(cout);
 
 		if (w.UTXOTable.size() == 0) {
-			cout << "No balance...\n";
+			cout << "No sale securities...\n";
 			goto HOME;
 		}
 
-		size_t n = 0;																			// 구매할 유가증권 번호
-		const uint8_t * recipientPublicKeyHash = w.UTXOTable[n].output.recipientPublicKeyHash;	// 판매자의 UTXO에서 얻어 옴
-		Type type = w.UTXOTable[n].output.type;													// 판매자 소유의 유가증권 Type
-		int64_t fee = 1;																		// 사용자로부터 입력받거나 추천값 적용
+		if (w.myUTXOTable.size() == 0) {
+			cout << "No my GLC...\n";
+			goto HOME;
+		}
+
+		// 사용자 직접 입력
+		cout << "Select : ";
+		size_t n;																			// 구매할 유가증권 번호
+		cin >> n;
+
+		cout << "Value : ";
+		int64_t value;																		// 얼마나 구매할지
+		cin >> value;
+
+		cout << "Transaction Fee : ";
+		int64_t fee;																		//********************어디서 얻어오나?? 판매자가 정함
+		cin >> fee;
 
 		// inputPassword	// 비밀번호 확인
 
 		Transaction tx;
-		if (w.createTransactionPurchaseSale(tx, 1, recipientPublicKeyHash, type, 99, fee, "GiftCard LoveShinak : P2P Trade"))
+		if (w.createTransactionPurchaseSale(tx, 1, w.UTXOTable[n], value, fee, "GiftCard LoveShinak : Securities Purchase")) {
 			cout << "Transaction was created!\n";
+
+			if (bc.addTransactionToPool(tx))
+				cout << "Transaction was added to Tx Pool!\n";
+			else
+				cout << "Adding Tx to Tx Pool fail...\n";
+		}
 		else
 			cout << "No balance....\n";
 
-		if (bc.addTransactionToPool(tx))
-			cout << "Transaction was added to Tx Pool!\n";
-		else
-			cout << "Adding Tx to Tx Pool fail...\n";
 		//broadcastTransaction(tx);
+
+		goto HOME;
 	}
-	*/
+
 
 USE: // 유가증권 사용
 	{
@@ -218,7 +289,8 @@ USE: // 유가증권 사용
 		system("cls");
 
 		//err = getBroadcastedBlockchain(bc);
-		bc.findMyUTXOTable(myUTXOTable, w.getPublicKeyHash(), State::own);
+
+		bc.findMyUTXOTable(myUTXOTable, w.getPublicKeyHash(), State::OWN);
 
 		vector<UTXO> mySecuritiesUTXOTable;		// 참조되지 않은 내 소유의 유가증권(Own)
 		for (const UTXO utxo : myUTXOTable) {
@@ -235,8 +307,14 @@ USE: // 유가증권 사용
 		}
 
 		// 사용자 직접 입력
-		size_t n = 0;																			// 선택한 유가증권 번호
-		int64_t value = 99;																		// 얼마나 사용할지 사용자로부터 입력받음
+		cout << "Select : ";
+		size_t n;																				// 사용할 유가증권 번호
+		cin >> n;
+		
+		cout << "Value : ";
+		int64_t value;																			// 얼마나 사용할지 사용자로부터 입력받음
+		cin >> value;
+
 
 		// 코드 스캔
 		const uint8_t * recipientPublicKeyHash = recipient.getPublicKeyHash();					// 받는 사람 입력 또는 코드 스캔
@@ -244,12 +322,12 @@ USE: // 유가증권 사용
 		int64_t fee = 1;																		// 코드 스캔으로 얻어 옴
 
 		// 자동 입력
-		State state = State::spent;																// 유가증권 사용
+		State state = State::SPENT;																// 유가증권 사용
 
 		// inputPassword	// 비밀번호 확인
 
 		Transaction tx;
-		if (w.createTransactionSwitchState(tx, 1, recipientPublicKeyHash, type, 99, fee, state, "GiftCard LoveShinak : own to spent")) {	// sale to spent는?
+		if (w.createTransactionSwitchState(tx, 1, recipientPublicKeyHash, type, value, fee, state, "GiftCard LoveShinak : own to spent")) {	// sale to spent는?
 			cout << "Transaction was created!\n";
 
 			if (bc.addTransactionToPool(tx))
@@ -272,7 +350,8 @@ SEND: // 유가증권, 코인 전송
 		system("cls");
 
 		//err = getBroadcastedBlockchain(bc);
-		bc.findMyUTXOTable(myUTXOTable, w.getPublicKeyHash(), State::own);
+
+		bc.findMyUTXOTable(myUTXOTable, w.getPublicKeyHash(), State::OWN);
 		w.myUTXOTable = myUTXOTable;
 		w.printMyUTXOTable(cout);
 
@@ -281,11 +360,23 @@ SEND: // 유가증권, 코인 전송
 			goto HOME;
 		}
 
+
 		// 사용자 직접 입력
-		size_t n = 0;																			// 선택한 유가증권 번호
+		cout << "Select : ";
+		size_t n;																				// 선택한 유가증권 번호
+		cin >> n;
+
+		cout << "Value : ";
+		int64_t value;																			// 소유한 유가증권을 상대방에게 얼마나 전송할 건지
+		cin >> value;
+
+		cout << "Transaction Fee : ";
+		int64_t fee;																			// 사용자로부터 입력받거나 추천값 적용
+		cin >> fee;
+
+
+		// 자동 입력
 		Type type = w.myUTXOTable[n].output.type;												// 사용자 소유의 유가증권
-		int64_t value = 10;																		// 소유한 유가증권을 상대방에게 얼마나 전송할 건지
-		int64_t fee = 1;																		// 사용자로부터 입력받거나 추천값 적용
 		State state = w.myUTXOTable[n].output.state;											// 어떤 상태로 바꿀지 입력받음
 
 		// 코드 스캔
@@ -320,7 +411,7 @@ PRODUCE: // 블록 생성
 
 		// 사용자로부터 입력받음
 		int txCount = MAX_TRANSACTION_COUNT;
-		State feeState = State::own;
+		State feeState = State::OWN;
 
 		if (bc.produceBlock(w.getPublicKeyHash(), txCount, feeState))
 			cout << "Block was produced!\n";
@@ -342,13 +433,35 @@ INFO: // 블록체인 정보 불러오기
 		else
 			cout << "Invalid blockchain...\n";
 
-		cout << "Test complete!\n";
-
 		goto HOME;
 	}
 
+	cout << "Test complete!\n";
 	system("pause");
 	return 0;
+
+	//void func1(promise<bool> & p) { return false; };
+	//promise<bool> p;
+	//thread t1(func1, &p);
+	//t1.detach();
+
+
+	//future<bool> f;
+
+
+
+	//
+
+
+	//future<bool> f = p.get_future();
+
+	//p.set_value(true);
+
+	//f.wait();
+	//f.get();
+
+
+
 }
 
 bool is_number(const string& s) {
