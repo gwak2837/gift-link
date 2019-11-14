@@ -5,7 +5,6 @@
 #include <vector>
 #include <queue>
 #include <string>
-#include <algorithm>
 #include <future>
 #include <thread>
 #include <boost/asio.hpp>
@@ -47,9 +46,7 @@ int main()
 	vector<UTXO> myUTXOTable;		// 참조되지 않은 내 소유의 UTXO
 	vector<UTXO> UTXOTable;			// 참조되지 않은 모든 UTXO
 
-
-
-
+	future<bool> future_block_produce;
 
 HOME:
 	{
@@ -99,6 +96,20 @@ ISSUE: // 유가증권 발행
 		system("pause");
 		system("cls");
 
+		if (future_block_produce.valid()) {
+			if (future_block_produce.wait_for(chrono::nanoseconds(0)) == future_status::timeout) {
+				cout << "Still producing the block...\n";
+				goto HOME;
+			}
+			else {
+				if (future_block_produce.get()) {
+					// broadcastBlockchain(bc);
+				}
+				else
+					cout << "Block producing failed...\n";
+			}
+		}
+
 		// 사용자로부터 입력받음
 		cout << "GiftCard Name : ";
 		string name;
@@ -116,7 +127,6 @@ ISSUE: // 유가증권 발행
 		time_t expirationDate;
 		cin >> expirationDate;
 
-
 		// 자동 입력
 		Type type(name, faceValue, marketValue, time(NULL) + expirationDate, w.getPrivateKey());
 		int txCount = 1;
@@ -126,25 +136,7 @@ ISSUE: // 유가증권 발행
 
 		// inputPassword	// 비밀번호 확인
 
-		
-		//packaged_task<bool(const uint8_t *, int, Type &, int64_t, const State, const State)> task(bc.issueSecurities);
-
-		//future<bool> f = task.get_future();
-
-		//thread threadIssueSecurities(move(task), w.getPublicKeyHash(), txCount, ref(type), issueAmount, securitiesState, feeState);
-
-		//if(f.get())
-		//	cout << "Security was issued!\n";
-		//else
-		//	cout << "Issuing security failed...\n";
-
-
-		if (bc.issueSecurities(w.getPublicKeyHash(), txCount, type, issueAmount, securitiesState, feeState))
-			cout << "Security was issued!\n";
-		else
-			cout << "Issuing security failed...\n";
-			
-		// broadcastBlockchain(bc);
+		future_block_produce = async(launch::async, &Blockchain::issueSecurities, ref(bc), w.getPublicKeyHash(), txCount, type, issueAmount, securitiesState, feeState);
 
 		goto HOME;
 	}
@@ -310,7 +302,7 @@ USE: // 유가증권 사용
 		cout << "Select : ";
 		size_t n;																				// 사용할 유가증권 번호
 		cin >> n;
-		
+
 		cout << "Value : ";
 		int64_t value;																			// 얼마나 사용할지 사용자로부터 입력받음
 		cin >> value;
@@ -407,18 +399,27 @@ PRODUCE: // 블록 생성
 		system("pause");
 		system("cls");
 
+		if (future_block_produce.valid()) {
+			if (future_block_produce.wait_for(chrono::nanoseconds(0)) == future_status::timeout) {
+				cout << "Still producing the block...\n";
+				goto HOME;
+			}
+			else {
+				if (future_block_produce.get()) {
+					// broadcastBlockchain(bc);
+				}
+				else
+					cout << "Block producing fail...\n";
+			}
+		}
+
 		//err = getBroadcastedTransaction(tx);
 
 		// 사용자로부터 입력받음
 		int txCount = MAX_TRANSACTION_COUNT;
 		State feeState = State::OWN;
 
-		if (bc.produceBlock(w.getPublicKeyHash(), txCount, feeState))
-			cout << "Block was produced!\n";
-		else
-			cout << "Block producing fail...\n";
-
-		//broadcastBlockchain(bc);
+		future_block_produce = async(launch::async, &Blockchain::produceBlock, ref(bc), w.getPublicKeyHash(), txCount, feeState);
 
 		goto HOME;
 	}

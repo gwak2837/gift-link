@@ -42,7 +42,7 @@ public:
 
 	bool addTransactionToPool(Transaction & _tx);
 	bool produceBlock(const std::uint8_t * recipientPublicKeyHash, int txCount, const State feeState = State::OWN);
-	bool issueSecurities(const std::uint8_t * recipientPublicKeyHash, int txCount, Type & type, int64_t issueAmount, const State securitiesState, const State feeState = State::OWN);
+	bool issueSecurities(const std::uint8_t * recipientPublicKeyHash, int txCount, Type type, int64_t issueAmount, const State securitiesState, const State feeState = State::OWN);
 
 	bool findUTXOTable(std::vector<UTXO> & UTXOTable) const;
 	bool findUTXOTable(std::vector<UTXO> & UTXOTable, const State state) const;

@@ -49,7 +49,6 @@ bool Blockchain::addBlock(Transaction & coinbaseTx) {
 	Block * newWaitingBlock = new Block(lastBlock);
 	waitingBlock = newWaitingBlock;
 
-	cout << "Block was produced successfully!\n";
 	return true;
 }
 
@@ -125,10 +124,11 @@ bool Blockchain::produceBlock(const uint8_t * recipientPublicKeyHash, int txCoun
 	if (!addBlock(coinbaseTx))
 		return false;
 
+	cout << "Block was produced successfully!\n";
 	return true;
 }
 
-bool Blockchain::issueSecurities(const uint8_t * recipientPublicKeyHash, int txCount, Type & type, int64_t issueAmount, const State securitiesState, const State feeState) {
+bool Blockchain::issueSecurities(const uint8_t * recipientPublicKeyHash, int txCount, Type type, int64_t issueAmount, const State securitiesState, const State feeState) {
 	if (txPool.size() == 0)
 		cout << "There aren't enough transactions in the transaction pool to produce block...\n";
 
@@ -179,6 +179,7 @@ bool Blockchain::issueSecurities(const uint8_t * recipientPublicKeyHash, int txC
 	if (!addBlock(coinbaseTx))
 		return false;
 
+	cout << "Securities were issued successfully!\n";
 	return true;
 }
 
