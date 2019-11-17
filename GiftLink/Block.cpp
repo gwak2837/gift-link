@@ -6,7 +6,6 @@
 #include <cassert>
 #include <cstdint>
 #include "Block.h"
-#include "Transaction.h"
 #include "Utility.h"
 using namespace std;
 
@@ -172,6 +171,15 @@ bool Block::isValid() const {
 	return true;
 }
 
+bool Block::setAdditionalInfo() {
+	uint8_t * blockHeader = createBlockHeader();
+	SHA256_Encrpyt(blockHeader, getBlockHeaderSize(), blockHash);
+
+
+
+	return true;
+}
+
 void Block::initializeMerkleRoot() {
 	assert(transactions.size() > 0);
 
@@ -182,6 +190,8 @@ void Block::initializeMerkleRoot() {
 }
 
 void Block::print(ostream & o) const {
+	o << "Block #" << height << '\n';
+	o << "Block Hash:  " << blockHash << '\n';
 	printBlockHeader(o);
 
 	int j = 0;
@@ -193,8 +203,6 @@ void Block::print(ostream & o) const {
 }
 
 void Block::printBlockHeader(ostream & o) const {
-	o << "Block #" << height << '\n';
-	o << "Block Hash:  " << blockHash << '\n';
 	o << "Version:     " << version << '\n';
 	o << "Previous \nBlock Hash:  " << previousBlockHash << '\n';
 	o << "Merkle Hash: " << merkleRoot << '\n';

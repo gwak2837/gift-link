@@ -6,11 +6,13 @@
 #include <cassert>
 #include <map>
 #include <algorithm>
+#include <future>
 #include "Blockchain.h"
 #include "Block.h"
 #include "Transaction.h"
 #include "Wallet.h"
 #include "Utility.h"
+#include "BlockBroadcaster.h"
 using namespace std;
 
 // Genesis block을 생성한다.
@@ -125,6 +127,7 @@ bool Blockchain::produceBlock(const uint8_t * recipientPublicKeyHash, int txCoun
 		return false;
 
 	cout << "Block was produced successfully!\n";
+	broadcastBlock();
 	return true;
 }
 
@@ -180,6 +183,7 @@ bool Blockchain::issueSecurities(const uint8_t * recipientPublicKeyHash, int txC
 		return false;
 
 	cout << "Securities were issued successfully!\n";
+	broadcastBlock();
 	return true;
 }
 
@@ -266,6 +270,12 @@ bool Blockchain::getTxType(TxType & txType, const Transaction & tx) const {
 
 
 	return false;
+}
+
+void Blockchain::broadcastBlock() const {
+	BlockBroadcaster bb;
+	future<void> f2 = async(launch::async, &BlockBroadcaster::broadcast, ref(bb), getLastBlock(), "localhost", "8000");
+	cout << "Broadcasting\n";
 }
 
 bool Blockchain::isValidCoinbase(const Block * block, const Transaction & coinbaseTx, CoinbaseType coinbaseType) const {

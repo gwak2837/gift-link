@@ -10,6 +10,8 @@
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
 #include "Blockchain.h"
+#include "BlockBroadcastListener.h"
+#include "BlockBroadcaster.h"
 using namespace std;
 
 
@@ -47,6 +49,11 @@ int main()
 	vector<UTXO> UTXOTable;			// 참조되지 않은 모든 UTXO
 
 	future<bool> future_block_produce;
+
+	BlockBroadcastListener bbl(8000);
+	future<void> f = async(launch::async, &BlockBroadcastListener::listen, ref(bbl));
+	//TransactionBroadcastListener tbl(8888);
+	//future<void> f = async(launch::async, &TransactionBroadcastListener::listen, ref(tbl));
 
 HOME:
 	{
@@ -102,9 +109,8 @@ ISSUE: // 유가증권 발행
 				goto HOME;
 			}
 			else {
-				if (future_block_produce.get()) {
-					// broadcastBlockchain(bc);
-				}
+				if (future_block_produce.get())
+					cout << "Block producing suceed!\n";
 				else
 					cout << "Block producing failed...\n";
 			}
@@ -405,9 +411,8 @@ PRODUCE: // 블록 생성
 				goto HOME;
 			}
 			else {
-				if (future_block_produce.get()) {
-					// broadcastBlockchain(bc);
-				}
+				if (future_block_produce.get())
+					cout << "Block producing suceed!\n";
 				else
 					cout << "Block producing fail...\n";
 			}
@@ -440,29 +445,6 @@ INFO: // 블록체인 정보 불러오기
 	cout << "Test complete!\n";
 	system("pause");
 	return 0;
-
-	//void func1(promise<bool> & p) { return false; };
-	//promise<bool> p;
-	//thread t1(func1, &p);
-	//t1.detach();
-
-
-	//future<bool> f;
-
-
-
-	//
-
-
-	//future<bool> f = p.get_future();
-
-	//p.set_value(true);
-
-	//f.wait();
-	//f.get();
-
-
-
 }
 
 bool is_number(const string& s) {

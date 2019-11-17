@@ -34,6 +34,7 @@ class Blockchain {
 	bool calculateTotalTransactionFee(const Block * block, std::map<Type, int64_t> & mapTypeValue) const;
 	bool calculateTotalTransactionFee(const Transaction & tx, std::map<Type, int64_t> & mapTypeValue) const;
 	bool getTxType(TxType & txType, const Transaction & tx) const;
+	void broadcastBlock() const;
 
 public:
 	int version;								// 블록체인 현재 버전
