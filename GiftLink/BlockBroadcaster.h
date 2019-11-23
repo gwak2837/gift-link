@@ -4,7 +4,6 @@
 #include <string>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
-#include <boost/archive/text_oarchive.hpp>
 #include "Block.h"
 
 class BlockBroadcaster {

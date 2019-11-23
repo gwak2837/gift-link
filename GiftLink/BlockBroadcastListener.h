@@ -1,9 +1,7 @@
 #pragma once
 #ifndef BLOCK_BROADCAST_LISTENER_H
 #define BLOCK_BROADCAST_LISTENER_H
-#include <array>
 #include <boost/asio.hpp>
-#include <boost/archive/text_iarchive.hpp>
 #include "Block.h"
 
 class BlockBroadcastListener {

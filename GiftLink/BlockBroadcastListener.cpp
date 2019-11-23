@@ -1,5 +1,7 @@
 #include <iostream>
 #include <cstdlib>
+#include <array>
+#include <boost/archive/text_iarchive.hpp>
 #include "BlockBroadcastListener.h"
 #include "Blockchain.h"
 using boost::asio::ip::tcp;
@@ -25,10 +27,7 @@ void BlockBroadcastListener::listen() {
 
 		try {
 			boost::system::error_code error;
-			//boost::array<char, 10000> broadcastedBlock;
-
-
-			array<char, 1000> stringBuffer{};
+			array<char, 10000> stringBuffer{};
 			//boost::asio::streambuf stringBuffer;
 			while (1) {
 				//size_t length = socket.read_some(boost::asio::buffer(stringBuffer), error);
@@ -44,24 +43,22 @@ void BlockBroadcastListener::listen() {
 					throw boost::system::system_error(error);
 				}
 
-
 				std::stringstream ss(stringBuffer.data());
 				boost::archive::text_iarchive ia(ss);
 
 				Block broadcastedBlock;
 				ia >> broadcastedBlock;
 				broadcastedBlock.setAdditionalInfo();
-				//if (!broadcastedBlock[0].isValid()) {
-				//	cout << "Invalid broadcasted block...\n";
-				//	break;
-				//}
-				cout << "New block from other node: \n";
-				broadcastedBlock.print(cout);
+				if (!broadcastedBlock.isValid()) {
+					cout << "Invalid broadcasted block...\n";	//DEBUG
+					break;
+				}
+				
+				cout << "New block from other node: \n";		//DEBUG
+				broadcastedBlock.print(cout);					//DEBUG
 
 				//boost::system::error_code ignored_error;
 				//boost::asio::write(socket, boost::asio::buffer("received!\n"), ignored_error);
-
-				
 
 				//if (!broadcastedBlock[0].isValid()) {
 				//	cout << "Invalid broadcasted block...\n";
@@ -74,19 +71,4 @@ void BlockBroadcastListener::listen() {
 		}
 	}
 }
-
-
-//int main() {
-//	try {
-//		boost::asio::io_context io_service;
-//		BlockBroadcastListener bbl(io_service, 2222);
-//		bbl.listen();
-//	}
-//	catch (exception& e) {
-//		cerr << "Exception: " << e.what() << endl;
-//	}
-//
-//	system("pause");
-//	return 0;
-//}
 

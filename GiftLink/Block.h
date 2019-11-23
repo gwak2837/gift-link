@@ -16,7 +16,6 @@
 
 class Block {
 	friend class Blockchain;
-	friend class boost::serialization::access;
 
 	/* Block Header */
 	int version;											// Blockchain 버전
@@ -54,6 +53,7 @@ class Block {
 	inline void setBits(std::uint8_t _bits) { bits = _bits; }
 
 	// serialization
+	friend class boost::serialization::access;
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int /* file_version */) {
 		ar & version;
@@ -62,7 +62,7 @@ class Block {
 		ar & timestamp;
 		ar & bits;
 		ar & nonce;
-		//ar & transactions;
+		ar & transactions;
 	}
 
 public:

@@ -9,13 +9,15 @@
 #include <cmath>
 #include <cassert>
 #include <string>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/string.hpp>
+#include <boost/serialization/serialization.hpp>
 #include "KISA_SHA256.h"
 #include "uECC.h"
 
 enum class TxType {
 	USE, SEND, STATE, PURCHASE 
 };
-
 
 enum class State {
 	OWN, SALE, SPENT
@@ -37,9 +39,18 @@ public:
 	friend bool operator==(const Type &, const Type &);
 	friend bool operator!=(const Type &, const Type &);
 	friend bool operator<(const Type &, const Type &);
+
+	// serialization
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive & ar, const unsigned int /* file_version */) {
+		ar & name;
+		ar & faceValue;
+		ar & marketValue;
+		ar & expirationDate;
+	}
 };
 
-//*************************** 유가증권/GLC에 따라 Output 종류를 2개로 나눌까?
 class Output {
 public:
 	std::uint8_t recipientPublicKeyHash[SHA256_DIGEST_VALUELEN];	// P2PKH. pubKeyHash(32 bytes)
@@ -47,12 +58,23 @@ public:
 	Type type;
 	State state;
 
+	Output() {};
 	Output(const std::uint8_t * _recipientPublicKeyHash, std::int64_t _value, Type _type, State _state);
 
 	void print(std::ostream & o) const;
 
 	friend bool operator==(const Output & obj, const Output & obj2);
 	friend bool operator!=(const Output & obj, const Output & obj2);
+
+	// serialization
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive & ar, const unsigned int /* file_version */) {
+		ar & recipientPublicKeyHash;
+		ar & value;
+		ar & type;
+		ar & state;
+	}
 };
 
 class Input {
@@ -68,6 +90,15 @@ public:
 	Input(const std::uint8_t * previousOutputPublicKeyHash, const std::uint8_t * _senderPublicKey, 
 		const std::uint8_t * _previousTxHash, int _outputIndex, std::uint64_t _blockHeight);	// normal transaction input
 
+	// serialization
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive & ar, const unsigned int /* file_version */) {
+		ar & previousTxHash;
+		ar & outputIndex;
+		ar & signature;
+		ar & senderPublicKey;
+	}
 };
 
 class Transaction {
@@ -93,6 +124,17 @@ public:
 	bool isCoinbase() const;
 	bool isValid() const;
 	void print(std::ostream & o) const;
+
+	// serialization
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive & ar, const unsigned int /* file_version */) {
+		ar & inputs;
+		ar & outputs;
+		ar & version;
+		ar & timestamp;
+		ar & memo;
+	}
 };
 
 
