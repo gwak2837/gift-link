@@ -15,6 +15,7 @@
 #include "BlockBroadcaster.h"
 using namespace std;
 
+
 // Genesis block을 생성한다.
 Blockchain::Blockchain(string _name, const uint8_t * _recipientPublicKeyHash) : blockCount(0), name(_name), version(1) {
 	cout << "Creating a blockchain...\n";

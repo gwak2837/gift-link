@@ -17,6 +17,7 @@ class Wallet {
 
 	const struct uECC_Curve_t * curve = uECC_secp256r1();
 	bool signOnTx(Transaction & tx);
+	void broadcastTransaction(Transaction tx) const;
 
 public:
 	std::vector<UTXO> UTXOTable;

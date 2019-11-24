@@ -99,6 +99,7 @@ public:
 		ar & outputIndex;
 		ar & signature;
 		ar & senderPublicKey;
+		ar & blockHeight;	// <- 원래 보내는 거 아님
 	}
 };
 

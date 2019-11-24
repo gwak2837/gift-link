@@ -5,6 +5,7 @@
 #include <algorithm>          // sort 사용 위해 필요
 #include "Wallet.h"
 #include "Transaction.h"
+#include "TransactionBroadcaster.h"
 #include "uECC.h"
 #include "Utility.h"
 using namespace std;
@@ -72,6 +73,7 @@ bool Wallet::createTransaction(Transaction & tx, int blockchainVersion, const ui
 		return false;
 
 	tx = tempTx;
+	broadcastTransaction(tempTx);
 	return true;
 }
 
@@ -112,6 +114,7 @@ bool Wallet::createTransactionSwitchState(Transaction & tx, int blockchainVersio
 		return false;
 
 	tx = tempTx;
+	broadcastTransaction(tempTx);
 	return true;
 }
 
@@ -156,18 +159,25 @@ bool Wallet::createTransactionPurchaseSale(Transaction & tx, int blockchainVersi
 		return false;
 
 	tx = tempTx;
+	broadcastTransaction(tempTx);
 	return true;
 }
 
 bool Wallet::signOnTx(Transaction & tx) {
 	for (Input & input : tx.inputs) {
 		if (uECC_sign(privateKey, tx.txHash, sizeof(tx.txHash), input.signature, curve) == 0) {			// 모든 input에 자신의 서명 생성
-			cout << "An error occurred when generating the signature...\n";											// 판매자의 판매 중인 유가증권 포함
+			cout << "An error occurred when generating the signature...\n";								// 판매자의 판매 중인 유가증권 포함
 			return false;
 		}
 	}
 
 	return true;
+}
+
+void Wallet::broadcastTransaction(Transaction tx) const {
+	TransactionBroadcaster tb;
+	future<void> f2 = async(launch::async, &TransactionBroadcaster::broadcast, ref(tb), tx, "localhost", "8000");
+	cout << "Broadcasting transaction...\n";
 }
 
 

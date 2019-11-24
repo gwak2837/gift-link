@@ -30,11 +30,13 @@ public:
 	std::string name;							// 블록체인 이름
 	int version;								// 블록체인 현재 버전
 
+	Blockchain() {};
 	Blockchain(std::string _name, const std::uint8_t * _recipientPublicKeyHash);
 
 	bool addTransactionToPool(Transaction & _tx);
 	bool produceBlock(const std::uint8_t * recipientPublicKeyHash, int txCount, const State feeState = State::OWN);
 	bool issueSecurities(const std::uint8_t * recipientPublicKeyHash, int txCount, Type type, int64_t issueAmount, const State securitiesState, const State feeState = State::OWN);
+	void broadcastBlock() const;
 
 	bool findUTXOTable(std::vector<UTXO> & UTXOTable) const;
 	bool findUTXOTable(std::vector<UTXO> & UTXOTable, const State state) const;
@@ -74,7 +76,6 @@ private:
 	bool calculateTotalTransactionFee(const Block * block, std::map<Type, int64_t> & mapTypeValue) const;
 	bool calculateTotalTransactionFee(const Transaction & tx, std::map<Type, int64_t> & mapTypeValue) const;
 	bool getTxType(TxType & txType, const Transaction & tx) const;
-	void broadcastBlock() const;
 };
 
 
