@@ -2,7 +2,7 @@
 #ifndef BLOCK_BROADCAST_LISTENER_H
 #define BLOCK_BROADCAST_LISTENER_H
 #include <boost/asio.hpp>
-#include "Block.h"
+#include "Blockchain.h"
 
 class BlockBroadcastListener {
 	boost::asio::io_context m_io_service;
@@ -11,7 +11,7 @@ class BlockBroadcastListener {
 public:
 	BlockBroadcastListener(short port);
 	~BlockBroadcastListener();
-	void listen();
+	void listen(Blockchain & bc);
 };
 
 #endif

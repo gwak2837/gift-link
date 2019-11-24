@@ -84,6 +84,7 @@ public:
 	std::uint8_t signature[SECP256R1_NUM_BYTES * 2];		// P2PKH. signature(64 bytes). 이전 Output의 PubKeyHash(32 byte)만 복사해서 해싱.
 	std::uint8_t senderPublicKey[SECP256R1_NUM_BYTES * 2];	// P2PKH. pubKey(64 bytes). 해싱 안 함.
 
+	/* Additional Information */
 	std::uint64_t blockHeight;								// UTXO가 어느 블록에 있는지 참고하는 용도. 해싱 안 함.
 
 	Input();												// coinbase transaction input
@@ -129,6 +130,7 @@ public:
 	friend class boost::serialization::access;
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int /* file_version */) {
+		ar & txHash;	// <- 원래 보내는 거 아님
 		ar & inputs;
 		ar & outputs;
 		ar & version;

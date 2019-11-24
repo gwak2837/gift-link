@@ -19,9 +19,8 @@ using namespace std;
 Blockchain::Blockchain(string _name, const uint8_t * _recipientPublicKeyHash) : blockCount(0), name(_name), version(1) {
 	cout << "Creating a blockchain...\n";
 
-	Block * _genesisBlock = new Block();
-	genesisBlock = _genesisBlock;
-	waitingBlock = _genesisBlock;
+	waitingBlock = new Block();
+	genesisBlock = waitingBlock;
 
 	vector<Input> inputs;				
 	Input coinbaseInput;
@@ -43,14 +42,16 @@ bool Blockchain::addBlock(Transaction & coinbaseTx) {
 	waitingBlock->transactions.insert(waitingBlock->transactions.begin(), coinbaseTx);
 	waitingBlock->initializeMerkleRoot();	// Transaction hash로 Merkletree를 만들어 waiting block의 merkleroot 계산
 	waitingBlock->mining();					// waiting block을 채굴
+	if (waitingBlock->previousBlock != NULL)
+		waitingBlock->height = waitingBlock->previousBlock->height + 1;
+	else
+		waitingBlock->height = 0;
+	waitingBlock->isMainChain = true;
+	
 	lastBlock = waitingBlock;
 	blockCount++;
-	waitingBlock->height = blockCount - 1;
-	waitingBlock->isMainChain = true;
 
-	Block * newWaitingBlock = new Block(lastBlock);
-	waitingBlock = newWaitingBlock;
-
+	waitingBlock = new Block(lastBlock);
 	return true;
 }
 

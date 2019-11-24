@@ -71,8 +71,9 @@ Transaction::Transaction(vector<Input> & _inputs, vector<Output> & _outputs, int
 	: inputs(_inputs), outputs(_outputs), version(_version), memo(_memo) {
 	timestamp = time(NULL);
 
+	
 	const uint8_t * txData = createTxData();
-
+	//unique_ptr<const uint8_t> txData(createTxData());	// 적절한 변환 함수가 없습니다..
 
 
 

@@ -175,7 +175,7 @@ bool Block::setAdditionalInfo() {
 	uint8_t * blockHeader = createBlockHeader();
 	SHA256_Encrpyt(blockHeader, getBlockHeaderSize(), blockHash);
 
-
+	//*****************************************거래 해시값 계산
 
 	return true;
 }

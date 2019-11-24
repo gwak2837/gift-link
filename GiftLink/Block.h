@@ -15,8 +15,7 @@
 #include "Transaction.h"
 
 class Block {
-	friend class Blockchain;
-
+public:
 	/* Block Header */
 	int version;											// Blockchain 버전
 	std::uint8_t previousBlockHash[SHA256_DIGEST_VALUELEN];	// 이전 블록 해시
@@ -28,17 +27,13 @@ class Block {
 	/* Transactions */
 	std::vector<Transaction> transactions;					// Transaction 내역
 
-	/* Block Information */
+	/* Additional Information */
 	std::uint8_t blockHash[SHA256_DIGEST_VALUELEN];			// Block 해시값
 	std::uint64_t height;									// Block의 높이. 해싱 안 함.
-	bool isMainChain;										// main chain 블록인지. 해싱 안 함.
 	const Block * previousBlock;							// 이전 블록의 메모리 주소. 해싱 안 함.
+
 	const Block * nextBlock;								// 다음 블록의 메모리 주소. 해싱 안 함.
-
-
-	std::uint8_t * createBlockHeader() const;
-	const std::uint8_t * createMerkleRoot() const;
-	bool miningSuccess() const;
+	bool isMainChain;										// main chain 블록인지. 해싱 안 함.
 
 	// Blockchain class에서 사용하는 메소드
 	inline bool isFull() const;
@@ -46,16 +41,11 @@ class Block {
 	void initializeMerkleRoot();
 	void printBlockHeader(std::ostream & o) const;
 
-	// getter method
-	inline int getBlockHeaderSize() const;
-
-	// setter method
-	inline void setBits(std::uint8_t _bits) { bits = _bits; }
-
 	// serialization
 	friend class boost::serialization::access;
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int /* file_version */) {
+		//ar & height;
 		ar & version;
 		ar & previousBlockHash;
 		ar & merkleRoot;
@@ -65,12 +55,17 @@ class Block {
 		ar & transactions;
 	}
 
-public:
 	Block();
 	Block(const Block * _previousBlock);
 	void print(std::ostream & o) const;
 	bool isValid() const;									// 블록 유효성 검사
 	bool setAdditionalInfo();
+	inline int getBlockHeaderSize() const;
+
+private:
+	std::uint8_t * createBlockHeader() const;
+	const std::uint8_t * createMerkleRoot() const;
+	bool miningSuccess() const;
 };
 
 inline int Block::getBlockHeaderSize() const {

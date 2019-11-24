@@ -51,7 +51,7 @@ int main()
 	future<bool> future_block_produce;
 
 	BlockBroadcastListener bbl(8000);
-	future<void> f = async(launch::async, &BlockBroadcastListener::listen, ref(bbl));
+	future<void> f = async(launch::async, &BlockBroadcastListener::listen, ref(bbl), ref(bc));
 	//TransactionBroadcastListener tbl(8888);
 	//future<void> f = async(launch::async, &TransactionBroadcastListener::listen, ref(tbl));
 
