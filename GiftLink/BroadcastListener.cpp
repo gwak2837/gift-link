@@ -82,7 +82,7 @@ void BroadcastListener::listen(Blockchain & bc) {
 
 					// 전파받은 거래의 유효성을 판단하고 거래 풀에 넣기
 					if (bc.addTransactionToPool(broadcastedTx))
-						cout << "Transaction 추가 완료\n";
+						cout << "Transaction was added in TxPool\n";
 					else
 						cout << "Broadcasted transaction is invalid...\n";
 

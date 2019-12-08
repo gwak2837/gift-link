@@ -1,4 +1,4 @@
-#include <iostream>
+ï»¿#include <iostream>
 #include <fstream>
 #include <cstdlib>
 #include <ctime>
@@ -14,10 +14,10 @@
 using namespace std;
 
 
-/* ÇöÀç ¾Æ·¡ ¼ø¼­¸¦ ÁöÄÑ¾ß ÇÔ.
-1. UTXO Table ¾÷µ¥ÀÌÆ®
-2. °Å·¡ »ı¼º
-3. Ã¤±¼
+/* í˜„ì¬ ì•„ë˜ ìˆœì„œë¥¼ ì§€ì¼œì•¼ í•¨.
+1. UTXO Table ì—…ë°ì´íŠ¸
+2. ê±°ë˜ ìƒì„±
+3. ì±„êµ´
 
 bc.findMyUTXOTable(myUTXO, myWallet.getPublicKeyHash());
 myWallet.setUTXOTable(myUTXO);
@@ -45,8 +45,8 @@ int main()
 
 	Blockchain bc;
 
-	vector<UTXO> myUTXOTable;		// ÂüÁ¶µÇÁö ¾ÊÀº ³» ¼ÒÀ¯ÀÇ UTXO
-	vector<UTXO> UTXOTable;			// ÂüÁ¶µÇÁö ¾ÊÀº ¸ğµç UTXO
+	vector<UTXO> myUTXOTable;		// ì°¸ì¡°ë˜ì§€ ì•Šì€ ë‚´ ì†Œìœ ì˜ UTXO
+	vector<UTXO> UTXOTable;			// ì°¸ì¡°ë˜ì§€ ì•Šì€ ëª¨ë“  UTXO
 
 	future<bool> future_block_produce;
 
@@ -98,7 +98,7 @@ HOME:
 		}
 	}
 
-ISSUE: // À¯°¡Áõ±Ç ¹ßÇà
+ISSUE: // ìœ ê°€ì¦ê¶Œ ë°œí–‰
 	{
 		system("pause");
 		system("cls");
@@ -116,7 +116,7 @@ ISSUE: // À¯°¡Áõ±Ç ¹ßÇà
 			}
 		}
 
-		// »ç¿ëÀÚ·ÎºÎÅÍ ÀÔ·Â¹ŞÀ½
+		// ì‚¬ìš©ìë¡œë¶€í„° ì…ë ¥ë°›ìŒ
 		cout << "GiftCard Name : ";
 		string name;
 		cin >> name;
@@ -133,14 +133,14 @@ ISSUE: // À¯°¡Áõ±Ç ¹ßÇà
 		time_t expirationDate;
 		cin >> expirationDate;
 
-		// ÀÚµ¿ ÀÔ·Â
+		// ìë™ ì…ë ¥
 		Type type(name, faceValue, marketValue, time(NULL) + expirationDate, myWallet.getPrivateKey());
 		int txCount = 1;
 		int64_t issueAmount = bc.getMaxIssueAmount(type);
 		State securitiesState = State::OWN;
 		State feeState = State::OWN;
 
-		// inputPassword	// ºñ¹Ğ¹øÈ£ È®ÀÎ
+		// inputPassword	// ë¹„ë°€ë²ˆí˜¸ í™•ì¸
 
 		future_block_produce = async(launch::async, &Blockchain::issueSecurities, ref(bc), myWallet.getPublicKeyHash(), txCount, type, issueAmount, securitiesState, feeState);
 
@@ -148,7 +148,7 @@ ISSUE: // À¯°¡Áõ±Ç ¹ßÇà
 	}
 
 
-SELL: // À¯°¡Áõ±Ç »óÅÂ ÀüÈ¯(¼ÒÀ¯<->ÆÇ¸Å)
+SELL: // ìœ ê°€ì¦ê¶Œ ìƒíƒœ ì „í™˜(ì†Œìœ <->íŒë§¤)
 	{
 		system("pause");
 		system("cls");
@@ -170,28 +170,28 @@ SELL: // À¯°¡Áõ±Ç »óÅÂ ÀüÈ¯(¼ÒÀ¯<->ÆÇ¸Å)
 			goto HOME;
 		}
 
-		// »ç¿ëÀÚ Á÷Á¢ ÀÔ·Â
+		// ì‚¬ìš©ì ì§ì ‘ ì…ë ¥
 		cout << "Select : ";
-		size_t n;											// »óÅÂ¸¦ ÀüÈ¯ÇÒ À¯°¡Áõ±Ç ¹øÈ£
+		size_t n;											// ìƒíƒœë¥¼ ì „í™˜í•  ìœ ê°€ì¦ê¶Œ ë²ˆí˜¸
 		cin >> n;
 
 		cout << "Value : ";
-		int64_t value;										// ¼ÒÀ¯ÇÑ À¯°¡Áõ±Ç Áß ¸î °³¸¦ ÆÇ¸Å ÁßÀ¸·Î ÀüÈ¯ÇÒÁö »ç¿ëÀÚ·ÎºÎÅÍ ÀÔ·Â¹ŞÀ½
+		int64_t value;										// ì†Œìœ í•œ ìœ ê°€ì¦ê¶Œ ì¤‘ ëª‡ ê°œë¥¼ íŒë§¤ ì¤‘ìœ¼ë¡œ ì „í™˜í• ì§€ ì‚¬ìš©ìë¡œë¶€í„° ì…ë ¥ë°›ìŒ
 		cin >> value;
 
 		cout << "Transaction Fee : ";
-		int64_t fee;										// »ç¿ëÀÚ·ÎºÎÅÍ ÀÔ·Â¹Ş°Å³ª ÃßÃµ°ª Àû¿ë
+		int64_t fee;										// ì‚¬ìš©ìë¡œë¶€í„° ì…ë ¥ë°›ê±°ë‚˜ ì¶”ì²œê°’ ì ìš©
 		cin >> fee;
 
 
-		// ÄÚµå ½ºÄµ
-		const uint8_t * ownerPublicKeyHash = myWallet.getPublicKeyHash();								// (ÀÚ½Å ¶Ç´Â ¹Ş´Â »ç¶÷) ÄÚµå ½ºÄµ
+		// ì½”ë“œ ìŠ¤ìº”
+		const uint8_t * ownerPublicKeyHash = myWallet.getPublicKeyHash();								// (ìì‹  ë˜ëŠ” ë°›ëŠ” ì‚¬ëŒ) ì½”ë“œ ìŠ¤ìº”
 
-		// ÀÚµ¿ ÀÔ·Â
-		Type type = myWallet.myUTXOTable[n].output.type;												// »ç¿ëÀÚ ¼ÒÀ¯ÀÇ À¯°¡Áõ±Ç
-		State state = myWallet.myUTXOTable[n].output.state == State::SALE ? State::OWN : State::SALE;	// ¼±ÅÃÇÑ À¯°¡Áõ±Ç ¹øÈ£·Î ÆÇ´Ü
+		// ìë™ ì…ë ¥
+		Type type = myWallet.myUTXOTable[n].output.type;												// ì‚¬ìš©ì ì†Œìœ ì˜ ìœ ê°€ì¦ê¶Œ
+		State state = myWallet.myUTXOTable[n].output.state == State::SALE ? State::OWN : State::SALE;	// ì„ íƒí•œ ìœ ê°€ì¦ê¶Œ ë²ˆí˜¸ë¡œ íŒë‹¨
 
-		// inputPassword	// ºñ¹Ğ¹øÈ£ È®ÀÎ
+		// inputPassword	// ë¹„ë°€ë²ˆí˜¸ í™•ì¸
 
 		Transaction tx;
 		if (myWallet.createTransactionSwitchState(tx, 1, ownerPublicKeyHash, type, value, fee, state, "GiftCard LoveShinak : own to sale")) {
@@ -210,9 +210,9 @@ SELL: // À¯°¡Áõ±Ç »óÅÂ ÀüÈ¯(¼ÒÀ¯<->ÆÇ¸Å)
 		goto HOME;
 	}
 
-	//**************************************À¯°¡Áõ±Ç ÆÇ¸Å ÇöÈ² °Ë»ç ÇÊ¿ä : 'À¯°¡Áõ±Ç ÀüÃ¼ ÆÇ¸Å·® < À¯°¡Áõ±Ç ¹ßÇà·®'ÀÌ¾î¾ß ±¸¸Å °¡´É
-	//**************************************±¸¸ÅÇÒ À¯°¡Áõ±ÇÀº ÀÚ±â ²¨´Â Á¦¿ÜÇÏ°í 
-BUY: // À¯°¡Áõ±Ç ±¸¸Å
+	//**************************************ìœ ê°€ì¦ê¶Œ íŒë§¤ í˜„í™© ê²€ì‚¬ í•„ìš” : 'ìœ ê°€ì¦ê¶Œ ì „ì²´ íŒë§¤ëŸ‰ < ìœ ê°€ì¦ê¶Œ ë°œí–‰ëŸ‰'ì´ì–´ì•¼ êµ¬ë§¤ ê°€ëŠ¥
+	//**************************************êµ¬ë§¤í•  ìœ ê°€ì¦ê¶Œì€ ìê¸° êº¼ëŠ” ì œì™¸í•˜ê³  
+BUY: // ìœ ê°€ì¦ê¶Œ êµ¬ë§¤
 	{
 		system("pause");
 		system("cls");
@@ -222,14 +222,14 @@ BUY: // À¯°¡Áõ±Ç ±¸¸Å
 		bc.findUTXOTable(UTXOTable, State::SALE);
 		vector<UTXO> saleSecuritiesTable;
 		for (const UTXO utxo : UTXOTable) {
-			if (utxo.output.type.expirationDate > time(NULL) && utxo.output.type != Type())	// À¯°¡Áõ±Ç À¯È¿±â°£ Ã¼Å©
+			if (utxo.output.type.expirationDate > time(NULL) && utxo.output.type != Type())	// ìœ ê°€ì¦ê¶Œ ìœ íš¨ê¸°ê°„ ì²´í¬
 				saleSecuritiesTable.push_back(utxo);
 		}
 
 		bc.findMyUTXOTable(myUTXOTable, myWallet.getPublicKeyHash());
 		vector<UTXO> myGLCTable;
 		for (const UTXO utxo : myUTXOTable) {
-			if (utxo.output.type == Type() && utxo.output.state == State::OWN)					// ³» ¼ÒÀ¯ÀÇ GLC
+			if (utxo.output.type == Type() && utxo.output.state == State::OWN)					// ë‚´ ì†Œìœ ì˜ GLC
 				myGLCTable.push_back(utxo);
 		}
 
@@ -248,20 +248,20 @@ BUY: // À¯°¡Áõ±Ç ±¸¸Å
 			goto HOME;
 		}
 
-		// »ç¿ëÀÚ Á÷Á¢ ÀÔ·Â
+		// ì‚¬ìš©ì ì§ì ‘ ì…ë ¥
 		cout << "Select : ";
-		size_t n;																			// ±¸¸ÅÇÒ À¯°¡Áõ±Ç ¹øÈ£
+		size_t n;																			// êµ¬ë§¤í•  ìœ ê°€ì¦ê¶Œ ë²ˆí˜¸
 		cin >> n;
 
 		cout << "Value : ";
-		int64_t value;																		// ¾ó¸¶³ª ±¸¸ÅÇÒÁö
+		int64_t value;																		// ì–¼ë§ˆë‚˜ êµ¬ë§¤í• ì§€
 		cin >> value;
 
 		cout << "Transaction Fee : ";
-		int64_t fee;																		//********************¾îµğ¼­ ¾ò¾î¿À³ª?? ÆÇ¸ÅÀÚ°¡ Á¤ÇÔ
+		int64_t fee;																		//********************ì–´ë””ì„œ ì–»ì–´ì˜¤ë‚˜?? íŒë§¤ìê°€ ì •í•¨
 		cin >> fee;
 
-		// inputPassword	// ºñ¹Ğ¹øÈ£ È®ÀÎ
+		// inputPassword	// ë¹„ë°€ë²ˆí˜¸ í™•ì¸
 
 		Transaction tx;
 		if (myWallet.createTransactionPurchaseSale(tx, 1, myWallet.UTXOTable[n], value, fee, "GiftCard LoveShinak : Securities Purchase")) {
@@ -281,7 +281,7 @@ BUY: // À¯°¡Áõ±Ç ±¸¸Å
 	}
 
 
-USE: // À¯°¡Áõ±Ç »ç¿ë
+USE: // ìœ ê°€ì¦ê¶Œ ì‚¬ìš©
 	{
 		system("pause");
 		system("cls");
@@ -290,7 +290,7 @@ USE: // À¯°¡Áõ±Ç »ç¿ë
 
 		bc.findMyUTXOTable(myUTXOTable, myWallet.getPublicKeyHash(), State::OWN);
 
-		vector<UTXO> mySecuritiesUTXOTable;		// ÂüÁ¶µÇÁö ¾ÊÀº ³» ¼ÒÀ¯ÀÇ À¯°¡Áõ±Ç(Own)
+		vector<UTXO> mySecuritiesUTXOTable;		// ì°¸ì¡°ë˜ì§€ ì•Šì€ ë‚´ ì†Œìœ ì˜ ìœ ê°€ì¦ê¶Œ(Own)
 		for (const UTXO utxo : myUTXOTable) {
 			if (utxo.output.type != Type())
 				mySecuritiesUTXOTable.push_back(utxo);
@@ -304,28 +304,28 @@ USE: // À¯°¡Áõ±Ç »ç¿ë
 			goto HOME;
 		}
 
-		// »ç¿ëÀÚ Á÷Á¢ ÀÔ·Â
+		// ì‚¬ìš©ì ì§ì ‘ ì…ë ¥
 		cout << "Select : ";
-		size_t n;																				// »ç¿ëÇÒ À¯°¡Áõ±Ç ¹øÈ£
+		size_t n;																				// ì‚¬ìš©í•  ìœ ê°€ì¦ê¶Œ ë²ˆí˜¸
 		cin >> n;
 
 		cout << "Value : ";
-		int64_t value;																			// ¾ó¸¶³ª »ç¿ëÇÒÁö »ç¿ëÀÚ·ÎºÎÅÍ ÀÔ·Â¹ŞÀ½
+		int64_t value;																			// ì–¼ë§ˆë‚˜ ì‚¬ìš©í• ì§€ ì‚¬ìš©ìë¡œë¶€í„° ì…ë ¥ë°›ìŒ
 		cin >> value;
 
 
-		// ÄÚµå ½ºÄµ
-		const uint8_t * recipientPublicKeyHash = administratorWallet.getPublicKeyHash();					// ¹Ş´Â »ç¶÷ ÀÔ·Â ¶Ç´Â ÄÚµå ½ºÄµ
-		Type type = myWallet.myUTXOTable[n].output.type;												// »ç¿ëÀÚ ¼ÒÀ¯ÀÇ À¯°¡Áõ±Ç ¶Ç´Â ÄÚµå ½ºÄµÀ¸·Î ¾ò¾î ¿È
-		int64_t fee = 1;																		// ÄÚµå ½ºÄµÀ¸·Î ¾ò¾î ¿È
+		// ì½”ë“œ ìŠ¤ìº”
+		const uint8_t * recipientPublicKeyHash = administratorWallet.getPublicKeyHash();					// ë°›ëŠ” ì‚¬ëŒ ì…ë ¥ ë˜ëŠ” ì½”ë“œ ìŠ¤ìº”
+		Type type = myWallet.myUTXOTable[n].output.type;												// ì‚¬ìš©ì ì†Œìœ ì˜ ìœ ê°€ì¦ê¶Œ ë˜ëŠ” ì½”ë“œ ìŠ¤ìº”ìœ¼ë¡œ ì–»ì–´ ì˜´
+		int64_t fee = 1;																		// ì½”ë“œ ìŠ¤ìº”ìœ¼ë¡œ ì–»ì–´ ì˜´
 
-		// ÀÚµ¿ ÀÔ·Â
-		State state = State::SPENT;																// À¯°¡Áõ±Ç »ç¿ë
+		// ìë™ ì…ë ¥
+		State state = State::SPENT;																// ìœ ê°€ì¦ê¶Œ ì‚¬ìš©
 
-		// inputPassword	// ºñ¹Ğ¹øÈ£ È®ÀÎ
+		// inputPassword	// ë¹„ë°€ë²ˆí˜¸ í™•ì¸
 
 		Transaction tx;
-		if (myWallet.createTransactionSwitchState(tx, 1, recipientPublicKeyHash, type, value, fee, state, "GiftCard LoveShinak : own to spent")) {	// sale to spent´Â?
+		if (myWallet.createTransactionSwitchState(tx, 1, recipientPublicKeyHash, type, value, fee, state, "GiftCard LoveShinak : own to spent")) {	// sale to spentëŠ”?
 			cout << "Transaction was created!\n";
 
 			if (bc.addTransactionToPool(tx))
@@ -342,7 +342,7 @@ USE: // À¯°¡Áõ±Ç »ç¿ë
 	}
 
 
-SEND: // À¯°¡Áõ±Ç, ÄÚÀÎ Àü¼Û
+SEND: // ìœ ê°€ì¦ê¶Œ, ì½”ì¸ ì „ì†¡
 	{
 		system("pause");
 		system("cls");
@@ -359,28 +359,28 @@ SEND: // À¯°¡Áõ±Ç, ÄÚÀÎ Àü¼Û
 		}
 
 
-		// »ç¿ëÀÚ Á÷Á¢ ÀÔ·Â
+		// ì‚¬ìš©ì ì§ì ‘ ì…ë ¥
 		cout << "Select : ";
-		size_t n;																				// ¼±ÅÃÇÑ À¯°¡Áõ±Ç ¹øÈ£
+		size_t n;																				// ì„ íƒí•œ ìœ ê°€ì¦ê¶Œ ë²ˆí˜¸
 		cin >> n;
 
 		cout << "Value : ";
-		int64_t value;																			// ¼ÒÀ¯ÇÑ À¯°¡Áõ±ÇÀ» »ó´ë¹æ¿¡°Ô ¾ó¸¶³ª Àü¼ÛÇÒ °ÇÁö
+		int64_t value;																			// ì†Œìœ í•œ ìœ ê°€ì¦ê¶Œì„ ìƒëŒ€ë°©ì—ê²Œ ì–¼ë§ˆë‚˜ ì „ì†¡í•  ê±´ì§€
 		cin >> value;
 
 		cout << "Transaction Fee : ";
-		int64_t fee;																			// »ç¿ëÀÚ·ÎºÎÅÍ ÀÔ·Â¹Ş°Å³ª ÃßÃµ°ª Àû¿ë
+		int64_t fee;																			// ì‚¬ìš©ìë¡œë¶€í„° ì…ë ¥ë°›ê±°ë‚˜ ì¶”ì²œê°’ ì ìš©
 		cin >> fee;
 
 
-		// ÀÚµ¿ ÀÔ·Â
-		Type type = myWallet.myUTXOTable[n].output.type;												// »ç¿ëÀÚ ¼ÒÀ¯ÀÇ À¯°¡Áõ±Ç
-		State state = myWallet.myUTXOTable[n].output.state;											// ¾î¶² »óÅÂ·Î ¹Ù²ÜÁö ÀÔ·Â¹ŞÀ½
+		// ìë™ ì…ë ¥
+		Type type = myWallet.myUTXOTable[n].output.type;												// ì‚¬ìš©ì ì†Œìœ ì˜ ìœ ê°€ì¦ê¶Œ
+		State state = myWallet.myUTXOTable[n].output.state;											// ì–´ë–¤ ìƒíƒœë¡œ ë°”ê¿€ì§€ ì…ë ¥ë°›ìŒ
 
-		// ÄÚµå ½ºÄµ
-		const uint8_t * recipientPublicKeyHash = administratorWallet.getPublicKeyHash();					// ¹Ş´Â »ç¶÷
+		// ì½”ë“œ ìŠ¤ìº”
+		const uint8_t * recipientPublicKeyHash = administratorWallet.getPublicKeyHash();					// ë°›ëŠ” ì‚¬ëŒ
 
-		// inputPassword	// ºñ¹Ğ¹øÈ£ È®ÀÎ
+		// inputPassword	// ë¹„ë°€ë²ˆí˜¸ í™•ì¸
 
 		Transaction tx;
 		if (myWallet.createTransaction(tx, 1, recipientPublicKeyHash, type, value, fee, "GiftCard LoveShinak : send")) {
@@ -400,7 +400,7 @@ SEND: // À¯°¡Áõ±Ç, ÄÚÀÎ Àü¼Û
 	}
 
 
-PRODUCE: // ºí·Ï »ı¼º
+PRODUCE: // ë¸”ë¡ ìƒì„±
 	{
 		system("pause");
 		system("cls");
@@ -420,7 +420,7 @@ PRODUCE: // ºí·Ï »ı¼º
 
 		//err = getBroadcastedTransaction(tx);
 
-		// »ç¿ëÀÚ·ÎºÎÅÍ ÀÔ·Â¹ŞÀ½
+		// ì‚¬ìš©ìë¡œë¶€í„° ì…ë ¥ë°›ìŒ
 		int txCount = MAX_TRANSACTION_COUNT;
 		State feeState = State::OWN;
 
@@ -430,7 +430,7 @@ PRODUCE: // ºí·Ï »ı¼º
 	}
 
 
-INFO: // ºí·ÏÃ¼ÀÎ Á¤º¸ ºÒ·¯¿À±â
+INFO: // ë¸”ë¡ì²´ì¸ ì •ë³´ ë¶ˆëŸ¬ì˜¤ê¸°
 	{
 		bc.print(cout);
 
